@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import Leads from './Leads';
 import { ESTADO_26634, LEADS_DA_BUSCA, LINHA_DO_TEMPO_26634, MENSAGENS_26634, PENDENCIAS_DO_GERENCIADOR, paginaCheia } from './dadosDeTeste';
+import { rota } from '@/gerenciador/lib/rotas';
 
 const { rpc, dbFrom, auditarGestor, toast } = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -48,14 +49,14 @@ function OndeEstou() {
   return <output data-testid="url">{l.pathname}{l.search}</output>;
 }
 
-function renderizar(url = '/leads') {
+function renderizar(url = rota('/leads')) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[url]}>
         <Routes>
-          <Route path="/leads" element={<Leads />} />
-          <Route path="/leads/:contatoId" element={<Leads />} />
+          <Route path={rota('/leads')} element={<Leads />} />
+          <Route path={rota('/leads/:contatoId')} element={<Leads />} />
         </Routes>
         <OndeEstou />
       </MemoryRouter>
@@ -101,7 +102,7 @@ describe('lista de leads', () => {
   });
 
   it('lê q, region e filtro da URL e manda para a RPC', async () => {
-    renderizar('/leads?q=Alcir&region=rj&filtro=agendados');
+    renderizar(rota('/leads?q=Alcir&region=rj&filtro=agendados'));
     await waitFor(() => expect(rpc).toHaveBeenCalledWith('bruna_gestor_buscar_leads', { p_q: 'Alcir', p_region: 'rj', p_filtro: 'agendados', p_limite: 50 }));
     expect(screen.getByLabelText('Buscar lead')).toHaveValue('Alcir');
     expect(screen.getByRole('button', { name: 'Agendados' })).toHaveAttribute('aria-pressed', 'true');
@@ -109,8 +110,8 @@ describe('lista de leads', () => {
   });
 
   it('praça ou filtro que a busca não conhece sai da URL e a busca vai sem eles', async () => {
-    renderizar('/leads?q=Alcir&region=arquitetos&filtro=xyz');
-    await waitFor(() => expect(screen.getByTestId('url')).toHaveTextContent(/^\/leads\?q=Alcir$/));
+    renderizar(rota('/leads?q=Alcir&region=arquitetos&filtro=xyz'));
+    await waitFor(() => expect(screen.getByTestId('url').textContent).toBe(rota('/leads?q=Alcir')));
     expect(chamadasDaBusca().every((a) => a.p_region === null && a.p_filtro === null)).toBe(true);
     expect(rpc).toHaveBeenCalledWith('bruna_gestor_buscar_leads', { p_q: 'Alcir', p_region: null, p_filtro: null, p_limite: 50 });
     expect(screen.getByRole('combobox', { name: 'Praça' })).toHaveTextContent('Todas as praças');
@@ -123,7 +124,7 @@ describe('lista de leads', () => {
     fireEvent.change(screen.getByLabelText('Buscar lead'), { target: { value: 'Graça' } });
     expect(chamadasDaBusca().some((a) => a.p_q === 'Graça')).toBe(false);
     await waitFor(() => expect(chamadasDaBusca().some((a) => a.p_q === 'Graça')).toBe(true));
-    expect(screen.getByTestId('url')).toHaveTextContent('/leads?q=Gra%C3%A7a');
+    expect(screen.getByTestId('url')).toHaveTextContent(rota('/leads?q=Gra%C3%A7a'));
   });
 
   it('o chip de filtro vai para a URL e para a RPC', async () => {
@@ -136,7 +137,7 @@ describe('lista de leads', () => {
 
   it('mostra o vazio dizendo o que fazer', async () => {
     rpc.mockResolvedValue([]);
-    renderizar('/leads?q=zzz');
+    renderizar(rota('/leads?q=zzz'));
     expect(await screen.findByText('Nenhum lead com essa busca')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Limpar busca e filtros' })).toBeInTheDocument();
   });
@@ -163,26 +164,26 @@ describe('lista de leads', () => {
     renderizar();
     const [link] = await screen.findAllByRole('link', { name: 'Adão Souto' });
     fireEvent.click(link);
-    await waitFor(() => expect(screen.getByTestId('url')).toHaveTextContent('/leads/27926'));
+    await waitFor(() => expect(screen.getByTestId('url')).toHaveTextContent(rota('/leads/27926')));
     await waitFor(() => expect(rpc).toHaveBeenCalledWith('bruna_gestor_lead_estado', { p_contato_id: 27926 }));
   });
 
   it('o "← Leads" do detalhe volta para a lista como o gestor a deixou', async () => {
-    renderizar('/leads?q=Ad%C3%A3o&region=sp&filtro=agendados');
+    renderizar(rota('/leads?q=Ad%C3%A3o&region=sp&filtro=agendados'));
     const [link] = await screen.findAllByRole('link', { name: 'Adão Souto' });
     fireEvent.click(link);
-    await waitFor(() => expect(screen.getByTestId('url')).toHaveTextContent('/leads/27926'));
-    expect(await screen.findByRole('link', { name: 'Leads' })).toHaveAttribute('href', '/leads?q=Ad%C3%A3o&region=sp&filtro=agendados');
+    await waitFor(() => expect(screen.getByTestId('url')).toHaveTextContent(rota('/leads/27926')));
+    expect(await screen.findByRole('link', { name: 'Leads' })).toHaveAttribute('href', rota('/leads?q=Ad%C3%A3o&region=sp&filtro=agendados'));
   });
 
   it('sem saber de onde veio (link colado), o "← Leads" leva à lista limpa', async () => {
-    renderizar('/leads/26634');
-    expect(await screen.findByRole('link', { name: 'Leads' })).toHaveAttribute('href', '/leads');
+    renderizar(rota('/leads/26634'));
+    expect(await screen.findByRole('link', { name: 'Leads' })).toHaveAttribute('href', rota('/leads'));
   });
 });
 
 describe('recorte de Bairros foco', () => {
-  const RECORTE = '/leads?region=goiania&foco=bairro%3AAlphaville+Goi%C3%A1s&dias=90';
+  const RECORTE = rota('/leads?region=goiania&foco=bairro%3AAlphaville+Goi%C3%A1s&dias=90');
 
   it('chega pela URL, vai no p_filtro com a mesma conta do painel e diz o que a lista mostra', async () => {
     renderizar(RECORTE);
@@ -190,7 +191,7 @@ describe('recorte de Bairros foco', () => {
     const aviso = within(screen.getByRole('region', { name: 'Recorte de Bairros foco' }));
     expect(aviso.getByText('Leads de Alphaville Goiás nos últimos 90 dias')).toBeInTheDocument();
     expect(aviso.getByText('A mesma conta da lista de Bairros foco de Goiânia.')).toBeInTheDocument();
-    expect(aviso.getByRole('link', { name: 'Ver em Bairros foco' })).toHaveAttribute('href', '/bairros?praca=goiania');
+    expect(aviso.getByRole('link', { name: 'Ver em Bairros foco' })).toHaveAttribute('href', rota('/bairros?praca=goiania'));
     // Com o recorte, só o filtro de agendados se combina (é a outra coluna do painel).
     expect(screen.getByRole('button', { name: 'Agendados' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Bruna desligada' })).not.toBeInTheDocument();
@@ -204,34 +205,34 @@ describe('recorte de Bairros foco', () => {
     expect(screen.getByTestId('url')).toHaveTextContent('filtro=agendados');
 
     fireEvent.click(screen.getByRole('button', { name: 'Tirar o recorte' }));
-    await waitFor(() => expect(screen.getByTestId('url')).toHaveTextContent(/^\/leads\?region=goiania&filtro=agendados$/));
+    await waitFor(() => expect(screen.getByTestId('url').textContent).toBe(rota('/leads?region=goiania&filtro=agendados')));
     await waitFor(() => expect(rpc).toHaveBeenCalledWith('bruna_gestor_buscar_leads', { p_q: null, p_region: 'goiania', p_filtro: 'agendados', p_limite: 50 }));
     expect(screen.queryByRole('region', { name: 'Recorte de Bairros foco' })).not.toBeInTheDocument();
   });
 
   it('pedido fora do foco e cidade inteira têm a frase deles', async () => {
-    renderizar('/leads?region=rj&foco=fora%3ACampo+Grande&dias=90');
+    renderizar(rota('/leads?region=rj&foco=fora%3ACampo+Grande&dias=90'));
     await waitFor(() => expect(rpc).toHaveBeenCalledWith('bruna_gestor_buscar_leads', expect.objectContaining({ p_filtro: 'foco:fora:90:Campo Grande' })));
     expect(screen.getByText('Leads que informaram o bairro Campo Grande nos últimos 90 dias, fora do foco')).toBeInTheDocument();
     expect(screen.getByText('A mesma conta da lista de Bairros foco do Rio de Janeiro.')).toBeInTheDocument();
   });
 
   it('recorte sem praça sai da URL e a busca vai sem ele', async () => {
-    renderizar('/leads?foco=bairro%3ABarra&dias=90');
-    await waitFor(() => expect(screen.getByTestId('url').textContent).toBe('/leads'));
+    renderizar(rota('/leads?foco=bairro%3ABarra&dias=90'));
+    await waitFor(() => expect(screen.getByTestId('url').textContent).toBe(rota('/leads')));
     expect(chamadasDaBusca().every((a) => a.p_filtro === null)).toBe(true);
   });
 
   it('um filtro que não se combina com o recorte sai da URL e o recorte fica', async () => {
-    renderizar('/leads?region=rj&foco=bairro%3ABarra&dias=90&filtro=bruna_off');
-    await waitFor(() => expect(screen.getByTestId('url').textContent).toBe('/leads?region=rj&foco=bairro%3ABarra&dias=90'));
+    renderizar(rota('/leads?region=rj&foco=bairro%3ABarra&dias=90&filtro=bruna_off'));
+    await waitFor(() => expect(screen.getByTestId('url').textContent).toBe(rota('/leads?region=rj&foco=bairro%3ABarra&dias=90')));
     expect(rpc).toHaveBeenCalledWith('bruna_gestor_buscar_leads', { p_q: null, p_region: 'rj', p_filtro: 'foco:bairro:90:Barra', p_limite: 50 });
     expect(chamadasDaBusca().some((a) => a.p_filtro === 'bruna_off')).toBe(false);
   });
 
   it('tipo que não existe ou dias fora da faixa tira o recorte', async () => {
-    renderizar('/leads?region=rj&foco=rua%3ABarra&dias=9999');
-    await waitFor(() => expect(screen.getByTestId('url').textContent).toBe('/leads?region=rj'));
+    renderizar(rota('/leads?region=rj&foco=rua%3ABarra&dias=9999'));
+    await waitFor(() => expect(screen.getByTestId('url').textContent).toBe(rota('/leads?region=rj')));
   });
 
   it('sem leads no recorte, diz isso e oferece tirar o recorte', async () => {
@@ -245,7 +246,7 @@ describe('recorte de Bairros foco', () => {
     renderizar(RECORTE);
     const [link] = await screen.findAllByRole('link', { name: 'Adão Souto' });
     fireEvent.click(link);
-    await waitFor(() => expect(screen.getByTestId('url')).toHaveTextContent('/leads/27926'));
+    await waitFor(() => expect(screen.getByTestId('url')).toHaveTextContent(rota('/leads/27926')));
     expect(await screen.findByRole('link', { name: 'Leads' })).toHaveAttribute('href', RECORTE);
   });
 });

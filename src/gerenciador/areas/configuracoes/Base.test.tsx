@@ -11,6 +11,7 @@ import Configuracoes from './Configuracoes';
 import { DUVIDAS, ENTRADAS, HISTORICO_DA_ENTRADA_14, REGIOES } from './testes/dados';
 import { args, criarBancoFalso, falha, ok, tem, type Chamada } from './testes/banco';
 import type { EntradaDaBase } from '@/gerenciador/lib/tipos';
+import { rota } from '@/gerenciador/lib/rotas';
 
 const { rpc, auditarGestor, toast, estado } = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -67,9 +68,9 @@ function renderizar() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/configuracoes/base']}>
+      <MemoryRouter initialEntries={[rota('/configuracoes/base')]}>
         <Routes>
-          <Route path="/configuracoes/*" element={<Configuracoes />} />
+          <Route path={rota('/configuracoes/*')} element={<Configuracoes />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -108,7 +109,7 @@ describe('base de conhecimento', () => {
     // A fila do dono.
     expect(screen.getByText('Perguntas que a base não respondeu')).toBeInTheDocument();
     expect(screen.getByText(/vantagens e desvantagens das películas para vidro em relação a pássaros/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'lead 27938' })).toHaveAttribute('href', '/leads/27938');
+    expect(screen.getByRole('link', { name: 'lead 27938' })).toHaveAttribute('href', rota('/leads/27938'));
   });
 
   it('a busca junta o que o tsvector acha com o trecho, sem ligar para acento', async () => {

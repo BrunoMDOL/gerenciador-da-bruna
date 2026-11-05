@@ -9,6 +9,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Regua from './Regua';
 import { criarBanco, type ChamadaAoBanco, type RespostaDoBanco } from './bancoDeTeste';
 import { LEADS, RETORNOS_PENDENTES, RETORNOS_RECENTES } from './dadosDeTeste';
+import { rota } from '@/gerenciador/lib/rotas';
 
 const { rpc, banco, auditarGestor, toast } = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -30,13 +31,13 @@ vi.mock('@/gerenciador/lib/auditoria', () => ({ auditarGestor }));
 vi.mock('sonner', () => ({ toast }));
 vi.mock('@/services/whatsapp', () => ({ syncTemplates: vi.fn(), createTemplate: vi.fn() }));
 
-function renderizar(url = '/regua/retornos') {
+function renderizar(url = rota('/regua/retornos')) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[url]}>
         <Routes>
-          <Route path="/regua/*" element={<Regua />} />
+          <Route path={rota('/regua/*')} element={<Regua />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -74,7 +75,7 @@ describe('retornos prometidos', () => {
   it('lista os pendentes com o lead, o atraso marcado e os detalhes', async () => {
     renderizar();
     const tabela = await screen.findByRole('table');
-    expect(within(tabela).getByRole('link', { name: 'Cristina P.' })).toHaveAttribute('href', '/leads/28300');
+    expect(within(tabela).getByRole('link', { name: 'Cristina P.' })).toHaveAttribute('href', rota('/leads/28300'));
     expect(within(tabela).getByText('(11) 99123-4567')).toBeInTheDocument();
     expect(within(tabela).getByText('Cliente vai retornar após a instalação dos vidros da cobertura e do fechamento lateral')).toBeInTheDocument();
     // 00:06 UTC de 05/11 é 21:06 de 04/11 em Brasília, e já passou.

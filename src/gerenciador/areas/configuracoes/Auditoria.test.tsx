@@ -12,6 +12,7 @@ import { AUDITORIA, CONTATO_26634 } from './testes/dados';
 import { args, criarBancoFalso, falha, ok, todos, type Chamada } from './testes/banco';
 import type { LinhaDaAuditoria } from './auditoria/dados';
 import { fraseDaAcao, grupoDaAcao } from './auditoria/acoes';
+import { rota } from '@/gerenciador/lib/rotas';
 
 const { rpc, auditarGestor, toast, estado, acesso } = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -56,9 +57,9 @@ function renderizar() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/configuracoes/auditoria']}>
+      <MemoryRouter initialEntries={[rota('/configuracoes/auditoria')]}>
         <Routes>
-          <Route path="/configuracoes/*" element={<Configuracoes />} />
+          <Route path={rota('/configuracoes/*')} element={<Configuracoes />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -94,10 +95,10 @@ describe('auditoria', () => {
     const [primeira, segunda, terceira] = within(lista).getAllByRole('listitem');
     expect(primeira).toHaveTextContent('bruno@besserhome.com.br criou uma orientação: “Não oferecer consultoria até ele mandar a foto”');
     expect(primeira).toHaveTextContent('05/11 10:25');
-    expect(within(primeira).getByRole('link', { name: 'orientação nº 4' })).toHaveAttribute('href', '/configuracoes/instrucoes');
-    expect(await within(primeira).findByRole('link', { name: 'lead 26634 · Reinaldo Staliano-DTAADV' })).toHaveAttribute('href', '/leads/26634');
+    expect(within(primeira).getByRole('link', { name: 'orientação nº 4' })).toHaveAttribute('href', rota('/configuracoes/instrucoes'));
+    expect(await within(primeira).findByRole('link', { name: 'lead 26634 · Reinaldo Staliano-DTAADV' })).toHaveAttribute('href', rota('/leads/26634'));
     expect(segunda).toHaveTextContent('criou uma versão do núcleo');
-    expect(within(segunda).getByRole('link', { name: 'versão do núcleo nº 2' })).toHaveAttribute('href', '/configuracoes/nucleo?versao=2');
+    expect(within(segunda).getByRole('link', { name: 'versão do núcleo nº 2' })).toHaveAttribute('href', rota('/configuracoes/nucleo?versao=2'));
     expect(terceira).toHaveTextContent('fup90 etapa ajustada');
 
     // A leitura: só gestor_*, o período padrão de 30 dias, o mais novo primeiro, 50 por vez.

@@ -12,6 +12,7 @@ import type { Analise, Sugestao } from '@/gerenciador/lib/tipos';
 import { fake } from './fakeDb.test-data';
 import { ANALISE_CONCLUIDA, ANALISE_FALHOU, ANALISE_RODANDO, SUGESTOES } from './fixtures.test-data';
 import Analises from './Analises';
+import { rota } from '@/gerenciador/lib/rotas';
 
 vi.mock('@/gerenciador/lib/db', async (importOriginal) => {
   const real = await importOriginal<typeof import('@/gerenciador/lib/db')>();
@@ -59,14 +60,14 @@ function responderComOEstado() {
   });
 }
 
-function renderizar(rota: string) {
+function renderizar(url: string) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } } });
   const tela = render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[rota]}>
+      <MemoryRouter initialEntries={[url]}>
         <Routes>
-          <Route path="/analises" element={<Analises />} />
-          <Route path="/analises/:analiseId" element={<Analises />} />
+          <Route path={rota('/analises')} element={<Analises />} />
+          <Route path={rota('/analises/:analiseId')} element={<Analises />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -97,7 +98,7 @@ describe('Análises: o detalhe', () => {
   afterEach(() => { vi.unstubAllGlobals(); });
 
   it('mostra o cabeçalho, o resumo em markdown, os achados por gravidade e as sugestões', async () => {
-    renderizar('/analises/12');
+    renderizar(rota('/analises/12'));
     // O título já aparece no esqueleto; o período só chega com os dados.
     expect(await screen.findByText('semanal · 29/10 a 05/11 · 7 dias')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Análise nº 12' })).toBeInTheDocument();
@@ -127,7 +128,7 @@ describe('Análises: o detalhe', () => {
     expect(media).toBeLessThan(leve);
     expect(screen.getByText('grave')).toBeInTheDocument();
     expect(screen.getByText('média')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'lead 28861' })).toHaveAttribute('href', '/leads/28861');
+    expect(screen.getByRole('link', { name: 'lead 28861' })).toHaveAttribute('href', rota('/leads/28861'));
     expect(screen.getByText('“Posso marcar uma consultoria gratuita para você?”').tagName).toBe('SPAN');
 
     // Sugestões desta análise (chegam depois da análise): contador e pendentes primeiro.
@@ -145,7 +146,7 @@ describe('Análises: o detalhe', () => {
   });
 
   it('"Aprovar e aplicar todas" aplica cada pendente automática e relata o resultado', async () => {
-    renderizar('/analises/12');
+    renderizar(rota('/analises/12'));
     fireEvent.click(await screen.findByRole('button', { name: 'Aprovar e aplicar todas (1)' }));
     const confirmacao = await screen.findByRole('alertdialog');
     expect(within(confirmacao).getByText('· Perguntar o bairro antes do convite em São Paulo')).toBeInTheDocument();
@@ -177,7 +178,7 @@ describe('Análises: o detalhe', () => {
 
   it('quando falhou, mostra o erro e "Tentar de novo" manda o analise_id para a função', async () => {
     fetchMock.mockResolvedValue(resposta(202, { ok: true, analise_id: 11, status: 'analisando' }));
-    const { qc } = renderizar('/analises/11');
+    const { qc } = renderizar(rota('/analises/11'));
     expect(await screen.findByText('A análise falhou')).toBeInTheDocument();
     expect(screen.getByText('Anthropic: overloaded_error (529) depois de 3 tentativas')).toBeInTheDocument();
     expect(screen.getByText('bruno@besserhome.com.br')).toBeInTheDocument();
@@ -222,7 +223,7 @@ describe('Análises: o detalhe', () => {
       gravarNoBanco(11, { erro: 'ANTHROPIC_API_KEY ausente', concluida_em: '2026-11-05T18:05:00+00:00' });
       return resposta(503, { erro: 'ANTHROPIC_API_KEY ausente' });
     });
-    renderizar('/analises/11');
+    renderizar(rota('/analises/11'));
     fireEvent.click(await screen.findByRole('button', { name: 'Tentar de novo' }));
 
     expect(await screen.findByText('A análise precisa da chave da Anthropic')).toBeInTheDocument();
@@ -233,7 +234,7 @@ describe('Análises: o detalhe', () => {
   });
 
   it('enquanto analisa, mostra o andamento e trava "Rodar de novo"', async () => {
-    renderizar('/analises/10');
+    renderizar(rota('/analises/10'));
     expect(await screen.findByText('Em andamento')).toBeInTheDocument();
     expect(screen.getByText('atualiza a cada 5 s')).toBeInTheDocument();
     expect(screen.getByText('analisando')).toBeInTheDocument();
@@ -242,11 +243,11 @@ describe('Análises: o detalhe', () => {
   });
 
   it('"O que foi analisado" abre com as contagens e os leads amostrados', async () => {
-    renderizar('/analises/12');
+    renderizar(rota('/analises/12'));
     fireEvent.click(await screen.findByRole('button', { name: /O que foi analisado/ }));
     expect(await screen.findByText('Métricas do período')).toBeInTheDocument();
     expect(screen.getByText('Novos').nextElementSibling).toHaveTextContent('112');
-    expect(screen.getByRole('link', { name: /Leonardo Mazarão/ })).toHaveAttribute('href', '/leads/28911');
+    expect(screen.getByRole('link', { name: /Leonardo Mazarão/ })).toHaveAttribute('href', rota('/leads/28911'));
     expect(screen.getByText('convite sem agendamento')).toBeInTheDocument();
     expect(screen.getByText('agendou a consultoria')).toBeInTheDocument();
     expect(screen.getByText('Perguntar o bairro antes do convite')).toBeInTheDocument();
@@ -255,16 +256,16 @@ describe('Análises: o detalhe', () => {
 
     // Os bairros fora do foco do digest, por praça, com o caminho para Bairros foco.
     expect(screen.getByText('Bairros fora do foco')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'São Paulo' })).toHaveAttribute('href', '/bairros?praca=sp');
+    expect(screen.getByRole('link', { name: 'São Paulo' })).toHaveAttribute('href', rota('/bairros?praca=sp'));
     expect(screen.getByText('71 de 101 leads com bairro no foco (70,3%) · 7 dias')).toBeInTheDocument();
     expect(screen.getByText('Itaim')).toBeInTheDocument();
     expect(screen.getByText('1 lead, 1 agendado')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Rio de Janeiro' })).toHaveAttribute('href', '/bairros?praca=rj');
+    expect(screen.getByRole('link', { name: 'Rio de Janeiro' })).toHaveAttribute('href', rota('/bairros?praca=rj'));
   });
 
   it('diz quando a análise não existe', async () => {
-    renderizar('/analises/99');
+    renderizar(rota('/analises/99'));
     expect(await screen.findByText('A análise nº 99 não existe')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Voltar às análises' })).toHaveAttribute('href', '/analises');
+    expect(screen.getByRole('link', { name: 'Voltar às análises' })).toHaveAttribute('href', rota('/analises'));
   });
 });

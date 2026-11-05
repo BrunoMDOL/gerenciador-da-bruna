@@ -10,6 +10,7 @@ import type { PausasDaRegua } from '@/gerenciador/lib/tipos';
 import Regua from './Regua';
 import { criarBanco } from './bancoDeTeste';
 import { ETAPAS, LEADS, RESUMO, RESUMO_VAZIO, RETORNOS_PENDENTES } from './dadosDeTeste';
+import { rota } from '@/gerenciador/lib/rotas';
 
 const { rpc, banco, auditarGestor, toast } = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -39,13 +40,13 @@ function OndeEstou() {
   return <output data-testid="url">{l.pathname}{l.search}</output>;
 }
 
-function renderizar(url = '/regua') {
+function renderizar(url = rota('/regua')) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[url]}>
         <Routes>
-          <Route path="/regua/*" element={<Regua />} />
+          <Route path={rota('/regua/*')} element={<Regua />} />
         </Routes>
         <OndeEstou />
       </MemoryRouter>
@@ -121,7 +122,7 @@ describe('visão da régua', () => {
     expect(within(fup).getByText('1.118')).toBeInTheDocument();
     expect(within(fup).getAllByText('1.475').length).toBeGreaterThan(0); // envios no período, somados por FUP
     expect(within(fup).getByText(/além do dia 90/)).toBeInTheDocument();
-    expect(within(fup).getByRole('link', { name: /editar/ })).toHaveAttribute('href', '/regua/fup90');
+    expect(within(fup).getByRole('link', { name: /editar/ })).toHaveAttribute('href', rota('/regua/fup90'));
 
     // Kanban: a coluna Follow-up de SP com 339 leads.
     const kanban = screen.getByText('Coluna Follow-up do kanban', { selector: 'h2' }).closest('section')!;
@@ -133,7 +134,7 @@ describe('visão da régua', () => {
     await screen.findByText('Escada de 24 h', { selector: 'h2' });
     fireEvent.click(screen.getByRole('button', { name: '30 dias' }));
     await waitFor(() => expect(rpc).toHaveBeenCalledWith('bruna_gestor_regua_resumo', { p_de: '2026-10-06T03:00:00.000Z', p_ate: '2026-11-05T03:00:00.000Z' }));
-    expect(screen.getByTestId('url')).toHaveTextContent('/regua?dias=30');
+    expect(screen.getByTestId('url')).toHaveTextContent(rota('/regua?dias=30'));
     expect(screen.getByRole('button', { name: '30 dias' })).toHaveAttribute('aria-pressed', 'true');
   });
 

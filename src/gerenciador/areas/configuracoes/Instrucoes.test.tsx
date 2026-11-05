@@ -11,6 +11,7 @@ import Configuracoes from './Configuracoes';
 import { CONFIGS, CONTATO_26634, GESTOR, HISTORICO_DA_INSTRUCAO_2, INSTRUCOES } from './testes/dados';
 import { args, criarBancoFalso, falha, ok, tem, type Chamada } from './testes/banco';
 import type { Instrucao } from '@/gerenciador/lib/tipos';
+import { rota } from '@/gerenciador/lib/rotas';
 
 const { rpc, auditarGestor, toast, estado } = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -58,9 +59,9 @@ function renderizar() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/configuracoes/instrucoes']}>
+      <MemoryRouter initialEntries={[rota('/configuracoes/instrucoes')]}>
         <Routes>
-          <Route path="/configuracoes/*" element={<Configuracoes />} />
+          <Route path={rota('/configuracoes/*')} element={<Configuracoes />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -87,7 +88,7 @@ describe('orientações', () => {
     expect(screen.queryByRole('heading', { name: 'Sem emoji no primeiro contato' })).toBeNull();
     expect(screen.getByText('SP · São Paulo')).toBeInTheDocument();
     const lead = await screen.findByText('Lead 26634 · Reinaldo Staliano-DTAADV');
-    expect(lead.closest('a')).toHaveAttribute('href', '/leads/26634');
+    expect(lead.closest('a')).toHaveAttribute('href', rota('/leads/26634'));
     expect(screen.getByText('vale em todos os turnos')).toBeInTheDocument();
     expect(screen.getByText('vale só na conversa')).toBeInTheDocument();
     expect(screen.getAllByText(/criada por bruno@besserhome\.com\.br/)).toHaveLength(2);

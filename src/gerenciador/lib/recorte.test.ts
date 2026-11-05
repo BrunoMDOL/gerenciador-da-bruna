@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DIAS_DO_RECORTE, descreverRecorte, filtroDoRecorte, lerRecorte, rotaDoRecorte } from './recorte';
+import { rota } from '@/gerenciador/lib/rotas';
 
 // O formato do p_filtro é o que a migration 20261105151000 ensinou
 // bruna_gestor_buscar_leads a ler: '^foco(_agendados)?:(bairro|cidade|fora):[0-9]{1,3}:.'
@@ -8,9 +9,9 @@ const FORMATO_DO_BANCO = /^foco(_agendados)?:(bairro|cidade|fora):[0-9]{1,3}:./;
 describe('recorte de Bairros foco', () => {
   it('monta o endereço de /leads com a praça, o item, os dias e, se pedido, os agendados', () => {
     expect(rotaDoRecorte('goiania', { tipo: 'bairro', nome: 'Alphaville Goiás', dias: 90 }))
-      .toBe('/leads?region=goiania&foco=bairro%3AAlphaville+Goi%C3%A1s&dias=90');
+      .toBe(rota('/leads?region=goiania&foco=bairro%3AAlphaville+Goi%C3%A1s&dias=90'));
     expect(rotaDoRecorte('sp', { tipo: 'cidade', nome: 'Barueri' }, 'agendados'))
-      .toBe(`/leads?region=sp&foco=cidade%3ABarueri&dias=${DIAS_DO_RECORTE}&filtro=agendados`);
+      .toBe(rota(`/leads?region=sp&foco=cidade%3ABarueri&dias=${DIAS_DO_RECORTE}&filtro=agendados`));
   });
 
   it('lê de volta o que montou, e recusa o que não vale', () => {

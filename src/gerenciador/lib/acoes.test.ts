@@ -29,6 +29,7 @@ vi.mock('./auditoria', () => ({ auditarGestor }));
 
 import { AcaoInvalida, NOME_DA_ACAO, aplicarSugestao, descreverAcao, ehAcaoDeBairroFoco, lerAcao, rotaDosBairrosFoco } from './acoes';
 import { ErroDoBanco } from './db';
+import { rota } from '@/gerenciador/lib/rotas';
 
 /** Um construtor de consulta do supabase-js que guarda o que foi pedido e responde quando é aguardado. */
 function construtor(tabela: string) {
@@ -108,7 +109,7 @@ describe('acoes: bairro_foco_salvar', () => {
     });
     // Criar não lê a lista antes: quem confere nome repetido é o banco.
     expect(consultas.map((c) => c.tabela)).toEqual(['bruna_sugestoes']);
-    expect(r).toEqual({ ref: 'bruna_bairros_foco_historico:318', mensagem: 'Recreio entrou nos bairros foco do Rio de Janeiro.', rota: '/bairros?praca=rj' });
+    expect(r).toEqual({ ref: 'bruna_bairros_foco_historico:318', mensagem: 'Recreio entrou nos bairros foco do Rio de Janeiro.', rota: rota('/bairros?praca=rj') });
 
     const marcada = atualizacaoDaSugestao()!;
     expect(marcada.eq).toEqual(['id', 41]);
@@ -133,7 +134,7 @@ describe('acoes: bairro_foco_salvar', () => {
       p_nome_original: null, p_tipo_original: null, p_depois_de: null, p_motivo: 'sugestão nº 41, da análise nº 7',
     });
     expect(r.mensagem).toBe(`Cotia entrou nos bairros foco de São Paulo. ${aviso}`);
-    expect(r.rota).toBe('/bairros?praca=sp');
+    expect(r.rota).toBe(rota('/bairros?praca=sp'));
   });
 
   it('altera pelo nome de hoje: o que a sugestão não trouxe sai do que está gravado', async () => {
@@ -173,7 +174,7 @@ describe('acoes: bairro_foco_salvar', () => {
     respostas.bruna_bairros_foco = () => ({ data: { so_se: [], nao_se: ['rio das ostras'], observacao: null }, error: null });
     rpc.mockResolvedValueOnce({ ok: true, acao: 'alterado', historico_id: null, item: { tipo: 'bairro', nome: 'Recreio' }, avisos: ['Nada mudou: o item já estava assim.'] });
     const r = await aplicarSugestao(sugestao({ tipo: 'bairro_foco_salvar', region: 'rj', tipo_item: 'bairro', nome: 'Recreio', nome_original: 'Recreio' }), QUEM);
-    expect(r).toEqual({ ref: 'bruna_bairros_foco:rj/bairro/Recreio', mensagem: 'Nada mudou: Recreio já estava assim nos bairros foco do Rio de Janeiro.', rota: '/bairros?praca=rj' });
+    expect(r).toEqual({ ref: 'bruna_bairros_foco:rj/bairro/Recreio', mensagem: 'Nada mudou: Recreio já estava assim nos bairros foco do Rio de Janeiro.', rota: rota('/bairros?praca=rj') });
     expect(atualizacaoDaSugestao()!.campos).toMatchObject({ status: 'aplicada', aplicada_ref: 'bruna_bairros_foco:rj/bairro/Recreio' });
   });
 
@@ -212,7 +213,7 @@ describe('acoes: bairro_foco_remover', () => {
       p_nome: 'Setor Faiçalville',
       p_motivo: 'nenhum lead em 180 dias (sugestão nº 41, da análise nº 9)',
     });
-    expect(r).toEqual({ ref: 'bruna_bairros_foco_historico:322', mensagem: 'Setor Faiçalville saiu dos bairros foco de Goiânia.', rota: '/bairros?praca=goiania' });
+    expect(r).toEqual({ ref: 'bruna_bairros_foco_historico:322', mensagem: 'Setor Faiçalville saiu dos bairros foco de Goiânia.', rota: rota('/bairros?praca=goiania') });
     expect(atualizacaoDaSugestao()!.campos).toMatchObject({ status: 'aplicada', aplicada_ref: 'bruna_bairros_foco_historico:322' });
     expect(auditarGestor).toHaveBeenCalledTimes(1);
     expect(auditarGestor.mock.calls[0][0]).toMatchObject({ acao: 'gestor_sugestao_aplicada', detalhes: { tipo: 'bairro_foco_remover' } });
@@ -242,7 +243,7 @@ describe('acoes: como o cartão lê e descreve as ações dos bairros foco', () 
     expect(ehAcaoDeBairroFoco(salvar)).toBe(true);
     expect(ehAcaoDeBairroFoco(lerAcao({ tipo: 'bairro_foco_remover', region: 'rj', tipo_item: 'bairro', nome: 'Recreio' }))).toBe(true);
     expect(ehAcaoDeBairroFoco(lerAcao({ tipo: 'lead_bruna', contato_id: 1, ligada: true }))).toBe(false);
-    expect(rotaDosBairrosFoco('goiania')).toBe('/bairros?praca=goiania');
+    expect(rotaDosBairrosFoco('goiania')).toBe(rota('/bairros?praca=goiania'));
   });
 
   it('descreve em uma frase: adicionar, cidade inteira, exceções, troca de nome e de tipo, mudar exceções e tirar', () => {

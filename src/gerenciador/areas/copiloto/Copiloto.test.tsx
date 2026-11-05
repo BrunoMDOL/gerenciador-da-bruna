@@ -90,6 +90,7 @@ vi.mock('@/gerenciador/lib/acesso', () => ({
 vi.mock('sonner', () => ({ toast: dublê.toast }));
 
 import Copiloto from './Copiloto';
+import { rota } from '@/gerenciador/lib/rotas';
 
 const { USUARIO, EMAIL, JWT, tabelas, falhas, esperas, chamadas, rpc, toast } = dublê;
 
@@ -167,13 +168,13 @@ function renderizar(caminho: string) {
     <QueryClientProvider client={cliente}>
       <MemoryRouter initialEntries={[caminho]}>
         <Routes>
-          <Route path="/copiloto" element={<Copiloto />} />
-          <Route path="/copiloto/:sessaoId" element={<Copiloto />} />
+          <Route path={rota('/copiloto')} element={<Copiloto />} />
+          <Route path={rota('/copiloto/:sessaoId')} element={<Copiloto />} />
         </Routes>
         <Rota />
         {/* O item "Copiloto" do menu do gerenciador e um atalho de outra área (Leads), como na vida real. */}
-        <Link to="/copiloto">Copiloto (menu)</Link>
-        <Link to="/copiloto?contato=28916">Analisar a Graça com o Copiloto</Link>
+        <Link to={rota('/copiloto')}>Copiloto (menu)</Link>
+        <Link to={rota('/copiloto?contato=28916')}>Analisar a Graça com o Copiloto</Link>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -212,7 +213,7 @@ afterEach(() => {
 
 describe('Copiloto: lista e conversa gravada', () => {
   it('mostra só as conversas do gestor, o lead de cada uma, e a conversa aberta com balões, consultas e tokens', async () => {
-    renderizar('/copiloto/7');
+    renderizar(rota('/copiloto/7'));
 
     expect(await screen.findByText('Resuma a régua desta semana')).toBeInTheDocument();
     expect(screen.queryByText('Conversa de outra gestora')).toBeNull();
@@ -222,11 +223,11 @@ describe('Copiloto: lista e conversa gravada', () => {
 
     const lista = screen.getByRole('navigation', { name: 'Conversas com o copiloto' });
     const ativa = within(lista).getByRole('link', { current: 'page' });
-    expect(ativa).toHaveAttribute('href', '/copiloto/7');
+    expect(ativa).toHaveAttribute('href', rota('/copiloto/7'));
     expect(ativa).toHaveTextContent('Reinaldo Staliano-DTAADV');
 
     // Cabeçalho: o lead vinculado leva à área de Leads.
-    expect(await screen.findByRole('link', { name: 'Reinaldo Staliano-DTAADV' })).toHaveAttribute('href', '/leads/26634');
+    expect(await screen.findByRole('link', { name: 'Reinaldo Staliano-DTAADV' })).toHaveAttribute('href', rota('/leads/26634'));
     expect(screen.getByText('São Paulo')).toBeInTheDocument();
 
     // A conversa: só as linhas com texto viram balão; tool_use vira a linha "consultou".
@@ -244,7 +245,7 @@ describe('Copiloto: lista e conversa gravada', () => {
     // Contador de sugestões do copiloto pendentes (origem copiloto + status pendente = 2).
     const pendentes = await screen.findByRole('link', { name: /sugestões do copiloto pendentes/ });
     expect(pendentes).toHaveTextContent('2 sugestões do copiloto pendentes');
-    expect(pendentes).toHaveAttribute('href', '/analises?aba=sugestoes');
+    expect(pendentes).toHaveAttribute('href', rota('/analises?aba=sugestoes'));
     expect(temPasso('bruna_sugestoes', 'eq', ['origem', 'copiloto'])).toBe(true);
     expect(temPasso('bruna_sugestoes', 'eq', ['status', 'pendente'])).toBe(true);
   });
@@ -252,7 +253,7 @@ describe('Copiloto: lista e conversa gravada', () => {
   it('vazio: sem conversas, mostra o que fazer e as perguntas gerais', async () => {
     tabelas.bruna_copiloto_sessoes = [];
     tabelas.bruna_sugestoes = [];
-    renderizar('/copiloto');
+    renderizar(rota('/copiloto'));
     expect(await screen.findByText('Nenhuma conversa ainda')).toBeInTheDocument();
     expect(screen.getByText('Pergunte ao copiloto')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'O que a Bruna mais errou nos últimos 7 dias?' })).toBeInTheDocument();
@@ -264,7 +265,7 @@ describe('Copiloto: lista e conversa gravada', () => {
 
   it('erro ao carregar as conversas: mostra a mensagem do banco e tenta de novo', async () => {
     falhas.bruna_copiloto_sessoes = 'permission denied for table bruna_copiloto_sessoes';
-    renderizar('/copiloto');
+    renderizar(rota('/copiloto'));
     expect(await screen.findByText('permission denied for table bruna_copiloto_sessoes')).toBeInTheDocument();
     delete falhas.bruna_copiloto_sessoes;
     fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
@@ -273,7 +274,7 @@ describe('Copiloto: lista e conversa gravada', () => {
 
   it('erro ao carregar as mensagens da sessão: Erro no chat com tentar de novo', async () => {
     falhas.bruna_copiloto_mensagens = 'canceling statement due to statement timeout';
-    renderizar('/copiloto/7');
+    renderizar(rota('/copiloto/7'));
     expect(await screen.findByText('canceling statement due to statement timeout')).toBeInTheDocument();
     delete falhas.bruna_copiloto_mensagens;
     fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
@@ -282,7 +283,7 @@ describe('Copiloto: lista e conversa gravada', () => {
 
   it('conversa de outro gestor: dá para ler, não para continuar', async () => {
     tabelas.bruna_copiloto_mensagens = [];
-    renderizar('/copiloto/3');
+    renderizar(rota('/copiloto/3'));
     expect(await screen.findByText('Esta conversa é de outro gestor: dá para ler, não para continuar.')).toBeInTheDocument();
     expect(caixa()).toBeDisabled();
   });
@@ -290,7 +291,7 @@ describe('Copiloto: lista e conversa gravada', () => {
   it('?pergunta= preenche a caixa e Shift+Enter não envia', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    renderizar('/copiloto?pergunta=' + encodeURIComponent('Quais chamados saíram com erro?'));
+    renderizar(rota('/copiloto?pergunta=') + encodeURIComponent('Quais chamados saíram com erro?'));
     await screen.findByText('Pergunte ao copiloto');
     expect(caixa()).toHaveValue('Quais chamados saíram com erro?');
     fireEvent.keyDown(caixa(), { key: 'Enter', shiftKey: true });
@@ -307,8 +308,8 @@ describe('Copiloto: envio com fluxo SSE', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    renderizar('/copiloto?contato=26634');
-    expect(await screen.findByRole('link', { name: 'Reinaldo Staliano-DTAADV' })).toHaveAttribute('href', '/leads/26634');
+    renderizar(rota('/copiloto?contato=26634'));
+    expect(await screen.findByRole('link', { name: 'Reinaldo Staliano-DTAADV' })).toHaveAttribute('href', rota('/leads/26634'));
     expect(screen.getByText('Pergunte sobre Reinaldo Staliano-DTAADV')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'O que a Bruna errou nesta conversa?' })).toBeInTheDocument();
 
@@ -331,7 +332,7 @@ describe('Copiloto: envio com fluxo SSE', () => {
     // A função criou a sessão: a tela navega e o fluxo continua.
     tabelas.bruna_copiloto_sessoes.unshift({ id: 9, titulo: 'Por que este lead não agendou?', contato_id: 26634, criado_por: USUARIO, criado_por_email: EMAIL, criado_em: '2026-11-05T13:00:00+00:00', atualizado_em: '2026-11-05T13:00:00+00:00' });
     await act(async () => { fluxo.mandar('sessao', { id: 9, titulo: 'Por que este lead não agendou?', contato_id: 26634 }); });
-    await waitFor(() => expect(screen.getByTestId('rota')).toHaveTextContent('/copiloto/9'));
+    await waitFor(() => expect(screen.getByTestId('rota')).toHaveTextContent(rota('/copiloto/9')));
     expect(screen.getByRole('list', { name: 'Mensagens da conversa' })).toHaveTextContent('Por que este lead não agendou?');
     await waitFor(() => expect(rpc).toHaveBeenCalledWith('bruna_gestor_auditar', {
       p_acao: 'gestor_copiloto_pergunta',
@@ -401,7 +402,7 @@ describe('Copiloto: envio com fluxo SSE', () => {
     expect(itens).toHaveLength(iCartao + 3);
     // A lista recarregou com a sessão nova.
     const lista = screen.getByRole('navigation', { name: 'Conversas com o copiloto' });
-    await waitFor(() => expect(within(lista).getByRole('link', { current: 'page' })).toHaveAttribute('href', '/copiloto/9'));
+    await waitFor(() => expect(within(lista).getByRole('link', { current: 'page' })).toHaveAttribute('href', rota('/copiloto/9')));
     expect(toast.error).not.toHaveBeenCalled();
   });
 
@@ -416,7 +417,7 @@ describe('Copiloto: envio com fluxo SSE', () => {
     ]));
     vi.stubGlobal('fetch', fetchMock);
 
-    renderizar('/copiloto/7');
+    renderizar(rota('/copiloto/7'));
     await screen.findByText('Vou ler o estado do lead.');
     fireEvent.change(caixa(), { target: { value: 'Ela deveria ter feito diferente?' } });
     fireEvent.click(screen.getByRole('button', { name: 'Enviar pergunta' }));
@@ -426,7 +427,7 @@ describe('Copiloto: envio com fluxo SSE', () => {
     expect(JSON.parse(init.body as string)).toEqual({ sessao_id: 7, texto: 'Ela deveria ter feito diferente?', contato_id: 26634 });
     expect(await screen.findByText('Sim: ela deveria confirmar o bairro primeiro.')).toBeInTheDocument();
     expect(screen.getByText('7.000 → 120 tokens')).toBeInTheDocument();
-    expect(screen.getByTestId('rota')).toHaveTextContent('/copiloto/7');
+    expect(screen.getByTestId('rota')).toHaveTextContent(rota('/copiloto/7'));
     await waitFor(() => expect(rpc).toHaveBeenCalledWith('bruna_gestor_auditar', expect.objectContaining({ p_acao: 'gestor_copiloto_pergunta', p_entidade_id: 7, p_contato_id: 26634 })));
   });
 
@@ -437,7 +438,7 @@ describe('Copiloto: envio com fluxo SSE', () => {
       return fluxo.resposta;
     }));
     tabelas.bruna_copiloto_sessoes = [];
-    renderizar('/copiloto');
+    renderizar(rota('/copiloto'));
     await screen.findByText('Pergunte ao copiloto');
     fireEvent.click(screen.getByRole('button', { name: 'Resuma a régua desta semana' }));
     await waitFor(() => expect(fluxo).toBeDefined());
@@ -462,7 +463,7 @@ describe('Copiloto: envio com fluxo SSE', () => {
       fluxo = fluxoControlado(init?.signal);
       return fluxo.resposta;
     }));
-    const { cliente } = renderizar('/copiloto/7');
+    const { cliente } = renderizar(rota('/copiloto/7'));
     await screen.findByText('Vou ler o estado do lead.');
     fireEvent.change(caixa(), { target: { value: 'E o convite, saiu duas vezes?' } });
     fireEvent.keyDown(caixa(), { key: 'Enter' });
@@ -512,13 +513,13 @@ describe('Copiloto: envio com fluxo SSE', () => {
       status: 503, headers: { 'Content-Type': 'application/json' },
     })));
     tabelas.bruna_copiloto_sessoes = [];
-    renderizar('/copiloto');
+    renderizar(rota('/copiloto'));
     await screen.findByText('Pergunte ao copiloto');
     fireEvent.click(screen.getByRole('button', { name: 'O que a Bruna mais errou nos últimos 7 dias?' }));
 
     const aviso = await screen.findByRole('alert');
     expect(aviso).toHaveTextContent('O copiloto precisa da chave da Anthropic (ANTHROPIC_API_KEY) nos segredos do projeto Supabase; veja Configurações › Geral › Pendências');
-    expect(within(aviso).getByRole('link', { name: 'Configurações › Geral › Pendências' })).toHaveAttribute('href', '/configuracoes/geral#pendencias');
+    expect(within(aviso).getByRole('link', { name: 'Configurações › Geral › Pendências' })).toHaveAttribute('href', rota('/configuracoes/geral#pendencias'));
     expect(within(aviso).queryByRole('button', { name: 'Tentar de novo' })).toBeNull();
     expect(toast.error).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'Enviar pergunta' })).toBeInTheDocument();
@@ -529,7 +530,7 @@ describe('Copiloto: envio com fluxo SSE', () => {
       status: 503, headers: { 'Content-Type': 'application/json' },
     })));
     tabelas.bruna_copiloto_sessoes = [];
-    renderizar('/copiloto');
+    renderizar(rota('/copiloto'));
     await screen.findByText('Pergunte ao copiloto');
     fireEvent.click(screen.getByRole('button', { name: 'O que a Bruna mais errou nos últimos 7 dias?' }));
 
@@ -552,7 +553,7 @@ describe('Copiloto: envio com fluxo SSE', () => {
       ]));
     vi.stubGlobal('fetch', fetchMock);
     tabelas.bruna_copiloto_sessoes = [];
-    renderizar('/copiloto');
+    renderizar(rota('/copiloto'));
     await screen.findByText('Pergunte ao copiloto');
 
     fireEvent.click(screen.getByRole('button', { name: 'Quais chamados saíram com erro?' }));
@@ -577,13 +578,13 @@ describe('Copiloto: envio com fluxo SSE', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ erro: 'sessão inválida ou expirada: entre de novo' }), {
       status: 401, headers: { 'Content-Type': 'application/json' },
     })));
-    renderizar('/copiloto/7');
+    renderizar(rota('/copiloto/7'));
     await screen.findByText('Vou ler o estado do lead.');
     fireEvent.change(caixa(), { target: { value: 'E agora?' } });
     fireEvent.keyDown(caixa(), { key: 'Enter' });
     const aviso = await screen.findByRole('alert');
     expect(aviso).toHaveTextContent('Entre de novo');
-    expect(within(aviso).getByRole('link', { name: 'Entrar de novo' })).toHaveAttribute('href', '/auth?redirect=%2Fcopiloto%2F7');
+    expect(within(aviso).getByRole('link', { name: 'Entrar de novo' })).toHaveAttribute('href', '/auth?redirect=' + encodeURIComponent(rota('/copiloto/7')));
   });
 
   it('com o histórico ainda carregando, envia e mostra o histórico antes da pergunta quando ele chega', async () => {
@@ -595,7 +596,7 @@ describe('Copiloto: envio com fluxo SSE', () => {
       return fluxo.resposta;
     });
     vi.stubGlobal('fetch', fetchMock);
-    renderizar('/copiloto/7?pergunta=' + encodeURIComponent('E o convite?'));
+    renderizar(rota('/copiloto/7?pergunta=') + encodeURIComponent('E o convite?'));
     await waitFor(() => expect(caixa()).toHaveValue('E o convite?'));
     fireEvent.keyDown(caixa(), { key: 'Enter' });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -625,7 +626,7 @@ describe('Copiloto: envio com fluxo SSE', () => {
       return fluxo.resposta;
     }));
     tabelas.bruna_copiloto_sessoes = [];
-    renderizar('/copiloto');
+    renderizar(rota('/copiloto'));
     await screen.findByText('Pergunte ao copiloto');
     fireEvent.click(screen.getByRole('button', { name: 'Resuma a régua desta semana' }));
     await waitFor(() => expect(fluxo).toBeDefined());
@@ -645,7 +646,7 @@ describe('Copiloto: o turno fica na conversa em que nasceu', () => {
 
   it('"Nova conversa" limpa o turno que falhou antes da sessão e volta às perguntas prontas', async () => {
     vi.stubGlobal('fetch', semChave());
-    renderizar('/copiloto');
+    renderizar(rota('/copiloto'));
     await screen.findByText('Pergunte ao copiloto');
     fireEvent.click(screen.getByRole('button', { name: 'O que a Bruna mais errou nos últimos 7 dias?' }));
     await screen.findByRole('alert');
@@ -655,23 +656,23 @@ describe('Copiloto: o turno fica na conversa em que nasceu', () => {
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
     expect(screen.getByText('Pergunte ao copiloto')).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Mensagens da conversa' })).toBeNull();
-    expect(screen.getByTestId('rota')).toHaveTextContent('/copiloto?nova=1');
+    expect(screen.getByTestId('rota')).toHaveTextContent(rota('/copiloto?nova=1'));
   });
 
   it('o turno que falhou numa conversa nova não volta depois de abrir outra conversa', async () => {
     vi.stubGlobal('fetch', semChave());
-    renderizar('/copiloto');
+    renderizar(rota('/copiloto'));
     await screen.findByText('Pergunte ao copiloto');
     fireEvent.click(screen.getByRole('button', { name: 'Quais chamados saíram com erro?' }));
     await screen.findByRole('alert');
 
     const lista = screen.getByRole('navigation', { name: 'Conversas com o copiloto' });
     fireEvent.click(within(lista).getByRole('link', { name: /Resuma a régua desta semana/ }));
-    await waitFor(() => expect(screen.getByTestId('rota')).toHaveTextContent('/copiloto/5'));
+    await waitFor(() => expect(screen.getByTestId('rota')).toHaveTextContent(rota('/copiloto/5')));
     expect(screen.queryByRole('alert')).toBeNull();
 
     fireEvent.click(screen.getByRole('link', { name: 'Copiloto (menu)' }));
-    await waitFor(() => expect(screen.getByTestId('rota')).toHaveTextContent(/^\/copiloto$/));
+    await waitFor(() => expect(screen.getByTestId('rota').textContent).toBe(rota('/copiloto')));
     expect(await screen.findByText('Pergunte ao copiloto')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByRole('list', { name: 'Mensagens da conversa' })).toBeNull();
@@ -679,20 +680,20 @@ describe('Copiloto: o turno fica na conversa em que nasceu', () => {
 
   it('o turno de ?contato=A não aparece na conversa de ?contato=B', async () => {
     vi.stubGlobal('fetch', semChave());
-    renderizar('/copiloto?contato=26634');
+    renderizar(rota('/copiloto?contato=26634'));
     expect(await screen.findByRole('link', { name: 'Reinaldo Staliano-DTAADV' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Por que este lead não agendou?' }));
     await screen.findByRole('alert');
 
     fireEvent.click(screen.getByRole('link', { name: 'Analisar a Graça com o Copiloto' }));
-    expect(await screen.findByRole('link', { name: 'Graça🧿🪬' })).toHaveAttribute('href', '/leads/28916');
+    expect(await screen.findByRole('link', { name: 'Graça🧿🪬' })).toHaveAttribute('href', rota('/leads/28916'));
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByRole('list', { name: 'Mensagens da conversa' })).toBeNull();
     expect(screen.getByText('Pergunte sobre Graça🧿🪬')).toBeInTheDocument();
   });
 
   it('no celular, a URL diz a tela: o menu leva à lista e "Nova conversa" ao chat', async () => {
-    renderizar('/copiloto/7');
+    renderizar(rota('/copiloto/7'));
     await screen.findByText('Vou ler o estado do lead.');
     const lista = () => screen.getByRole('navigation', { name: 'Conversas com o copiloto' }).closest('aside') as HTMLElement;
     const chat = () => document.querySelector('section[aria-label="Conversa com o copiloto"]') as HTMLElement;
@@ -706,22 +707,22 @@ describe('Copiloto: o turno fica na conversa em que nasceu', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nova conversa' }));
     await waitFor(() => expect(chat()).not.toHaveClass('hidden'));
     expect(lista()).toHaveClass('hidden');
-    expect(screen.getByTestId('rota')).toHaveTextContent('/copiloto?nova=1');
+    expect(screen.getByTestId('rota')).toHaveTextContent(rota('/copiloto?nova=1'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Voltar à lista de conversas' }));
     expect(lista()).not.toHaveClass('hidden');
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Conversas com o copiloto' })).getByRole('link', { name: /O que a Bruna errou nesta conversa\?/ }));
     await waitFor(() => expect(chat()).not.toHaveClass('hidden'));
-    expect(screen.getByTestId('rota')).toHaveTextContent('/copiloto/7');
+    expect(screen.getByTestId('rota')).toHaveTextContent(rota('/copiloto/7'));
   });
 
   it('o contador de sugestões que não carregou avisa e recarrega', async () => {
     falhas.bruna_sugestoes = 'permission denied for table bruna_sugestoes';
-    renderizar('/copiloto/7');
+    renderizar(rota('/copiloto/7'));
     expect(await screen.findByText('Contador de sugestões indisponível')).toBeInTheDocument();
     delete falhas.bruna_sugestoes;
     fireEvent.click(screen.getByRole('button', { name: 'Recarregar o contador de sugestões' }));
-    expect(await screen.findByRole('link', { name: /2 sugestões do copiloto pendentes/ })).toHaveAttribute('href', '/analises?aba=sugestoes');
+    expect(await screen.findByRole('link', { name: /2 sugestões do copiloto pendentes/ })).toHaveAttribute('href', rota('/analises?aba=sugestoes'));
     expect(screen.queryByText('Contador de sugestões indisponível')).toBeNull();
   });
 });

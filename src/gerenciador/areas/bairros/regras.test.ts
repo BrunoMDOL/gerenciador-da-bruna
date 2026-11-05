@@ -13,6 +13,7 @@ import {
   HISTORICO_DO_GESTOR, ITENS_SP, NAO_SE_DA_SAUDE, SINCRONIZACAO_VILA_ANDRADE, TESTE_BOSQUE_DA_SAUDE, TESTE_JD_PAULISTANO,
 } from './dadosDeTeste';
 import type { ResultadoDoTeste } from './tipos';
+import { rota } from '@/gerenciador/lib/rotas';
 
 describe('normalizar', () => {
   it('faz o mesmo que bruna_normaliza_texto', () => {
@@ -221,10 +222,10 @@ describe('praças e rotas', () => {
   });
 
   it('leva à lista de leads da praça, com o recorte do item quando há item', () => {
-    expect(rotaDosLeads('sp', { tipo: 'bairro', nome: 'Pinheiros', dias: 90 })).toBe('/leads?region=sp&foco=bairro%3APinheiros&dias=90');
-    expect(rotaDosLeads('sp', { tipo: 'bairro', nome: 'Vila Mariana', dias: 90 }, 'agendados')).toBe('/leads?region=sp&foco=bairro%3AVila+Mariana&dias=90&filtro=agendados');
-    expect(rotaDosLeads('sp', { tipo: 'cidade', nome: 'Barueri', dias: 30 })).toBe('/leads?region=sp&foco=cidade%3ABarueri&dias=30');
-    expect(rotaDosLeads('rj', { tipo: 'fora', nome: 'Campo Grande', dias: 90 })).toBe('/leads?region=rj&foco=fora%3ACampo+Grande&dias=90');
-    expect(rotaDosLeads('goiania')).toBe('/leads?region=goiania');
+    expect(rotaDosLeads('sp', { tipo: 'bairro', nome: 'Pinheiros', dias: 90 })).toBe(rota('/leads?region=sp&foco=bairro%3APinheiros&dias=90'));
+    expect(rotaDosLeads('sp', { tipo: 'bairro', nome: 'Vila Mariana', dias: 90 }, 'agendados')).toBe(rota('/leads?region=sp&foco=bairro%3AVila+Mariana&dias=90&filtro=agendados'));
+    expect(rotaDosLeads('sp', { tipo: 'cidade', nome: 'Barueri', dias: 30 })).toBe(rota('/leads?region=sp&foco=cidade%3ABarueri&dias=30'));
+    expect(rotaDosLeads('rj', { tipo: 'fora', nome: 'Campo Grande', dias: 90 })).toBe(rota('/leads?region=rj&foco=fora%3ACampo+Grande&dias=90'));
+    expect(rotaDosLeads('goiania')).toBe(rota('/leads?region=goiania'));
   });
 });

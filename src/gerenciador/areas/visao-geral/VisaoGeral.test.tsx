@@ -69,6 +69,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: v
 import VisaoGeral from './VisaoGeral';
 import { lerDias, lerPendencias, periodoDaSerie } from './dados';
 import { linhasDeErro, ordenarAlertas } from './calculos';
+import { rota } from '@/gerenciador/lib/rotas';
 
 // ---------------------------------------------------------------------------
 // A forma real do banco (05/11/2026)
@@ -283,13 +284,13 @@ function Local() {
   return <p data-testid="local">{l.pathname}{l.search}</p>;
 }
 
-function renderizar(rota = '/?dias=7') {
+function renderizar(url = rota('/?dias=7')) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } } });
   const tela = render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[rota]}>
+      <MemoryRouter initialEntries={[url]}>
         <Routes>
-          <Route path="/" element={<><VisaoGeral /><Local /></>} />
+          <Route path={rota('/')} element={<><VisaoGeral /><Local /></>} />
           <Route path="*" element={<Local />} />
         </Routes>
       </MemoryRouter>
@@ -383,13 +384,13 @@ describe('Visão geral', () => {
     renderizar();
     await waitFor(() => expect(valorDaMedida('Agendados pela Bruna')).toBe('42'));
     fireEvent.click(screen.getByText('Agendados pela Bruna'));
-    expect(screen.getByTestId('local')).toHaveTextContent('/leads?filtro=agendados');
+    expect(screen.getByTestId('local')).toHaveTextContent(rota('/leads?filtro=agendados'));
   });
 
   it('lista as praças com atendidos, responderam, agendados e taxa, cada uma levando aos leads da praça', async () => {
     renderizar();
     const sp = await screen.findByRole('link', { name: 'São Paulo' });
-    expect(sp).toHaveAttribute('href', '/leads?region=sp');
+    expect(sp).toHaveAttribute('href', rota('/leads?region=sp'));
     const linha = sp.closest('tr') as HTMLElement;
     expect(within(linha).getByText('172')).toBeInTheDocument();
     expect(within(linha).getByText('175')).toBeInTheDocument();
@@ -398,7 +399,7 @@ describe('Visão geral', () => {
 
     // Brasil e Brasil 2 são funis de qualificação, ditos em texto.
     expect(within(screen.getByRole('link', { name: 'Brasil 2' }).closest('tr') as HTMLElement).getByText('funil')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Goiânia' })).toHaveAttribute('href', '/leads?region=goiania');
+    expect(screen.getByRole('link', { name: 'Goiânia' })).toHaveAttribute('href', rota('/leads?region=goiania'));
 
     // Do maior para o menor: Goiânia (193) vem antes de São Paulo (172).
     const nomes = screen.getAllByRole('link', { name: /^(Goiânia|São Paulo|Rio de Janeiro|Brasil|Brasil 2|Pós-venda)$/ }).map((l) => l.textContent);
@@ -419,7 +420,7 @@ describe('Visão geral', () => {
     const praca = within(screen.getByRole('heading', { name: 'Por praça' }).closest('section') as HTMLElement);
     expect(praca.getByRole('rowheader', { name: 'Arquitetos' })).toBeInTheDocument();
     expect(praca.queryByRole('link', { name: 'Arquitetos' })).not.toBeInTheDocument();
-    expect(praca.getByRole('link', { name: 'Pós-venda' })).toHaveAttribute('href', '/leads?region=pos_venda');
+    expect(praca.getByRole('link', { name: 'Pós-venda' })).toHaveAttribute('href', rota('/leads?region=pos_venda'));
   });
 
   it('ordena os alertas por gravidade, com marcador escrito e o link certo para cada tipo', async () => {
@@ -431,12 +432,12 @@ describe('Visão geral', () => {
     expect(links).toHaveLength(3);
     expect(links[0]).toHaveTextContent('2 chamado(s) ao atendimento que não saíram (7 dias)');
     expect(links[0]).toHaveTextContent('grave');
-    expect(links[0]).toHaveAttribute('href', '/leads?filtro=com_chamado');
+    expect(links[0]).toHaveAttribute('href', rota('/leads?filtro=com_chamado'));
     expect(links[1]).toHaveTextContent('média');
-    expect(links[1]).toHaveAttribute('href', '/configuracoes/base');
+    expect(links[1]).toHaveAttribute('href', rota('/configuracoes/base'));
     expect(links[1]).toHaveTextContent('responder em Configurações › Base');
     expect(links[2]).toHaveTextContent('leve');
-    expect(links[2]).toHaveAttribute('href', '/regua');
+    expect(links[2]).toHaveAttribute('href', rota('/regua'));
   });
 
   it('desenha a série diária com os dias cheios e hoje, sem dia pela metade no começo, e repete os números em tabela', async () => {
@@ -472,7 +473,7 @@ describe('Visão geral', () => {
     const item = descartes.closest('a') as HTMLElement;
     expect(within(item).getByText('378')).toBeInTheDocument();
     expect(within(item).getByText('fup90_v2_03_vidro_comum: 81 de 185')).toBeInTheDocument();
-    expect(item).toHaveAttribute('href', '/regua');
+    expect(item).toHaveAttribute('href', rota('/regua'));
 
     // Só o veredito 'bloqueado' é frase cortada; o detalhe fala da mesma coisa que o número.
     // 'nao_verificado' (81) passa pelo guarda e não é erro: não aparece nesta linha.
@@ -484,7 +485,7 @@ describe('Visão geral', () => {
     const itens = painel('Erros do período').querySelectorAll('li');
     expect(itens).toHaveLength(2);
     expect(itens[0]).toHaveTextContent('Templates descartados pela Meta');
-    expect(screen.getByRole('link', { name: 'leads com revisão' })).toHaveAttribute('href', '/leads?filtro=com_revisao');
+    expect(screen.getByRole('link', { name: 'leads com revisão' })).toHaveAttribute('href', rota('/leads?filtro=com_revisao'));
   });
 
   it('erros do período: enquanto as métricas não chegam, só o esqueleto, sem a lista pela metade', async () => {
@@ -502,16 +503,16 @@ describe('Visão geral', () => {
   it('resume a régua em três linhas com os totais da escada, dos retornos e do FUP90', async () => {
     renderizar();
     const escada = await screen.findByText('919 toques');
-    expect(escada.closest('a')).toHaveAttribute('href', '/regua');
+    expect(escada.closest('a')).toHaveAttribute('href', rota('/regua'));
     expect(screen.getByText('41 pulados · 25,8% responderam em 24 h')).toBeInTheDocument();
 
     const retornos = screen.getByText('131 pendentes').closest('a') as HTMLElement;
-    expect(retornos).toHaveAttribute('href', '/leads?filtro=retorno_pendente');
+    expect(retornos).toHaveAttribute('href', rota('/leads?filtro=retorno_pendente'));
     expect(within(retornos).getByText('12 atrasados · 81 enviados no período')).toBeInTheDocument();
 
     const regua = screen.getByRole('heading', { name: 'Régua' }).closest('section') as HTMLElement;
     const fup = within(regua).getByText('ativa').closest('a') as HTMLElement;
-    expect(fup).toHaveAttribute('href', '/regua/fup90');
+    expect(fup).toHaveAttribute('href', rota('/regua/fup90'));
     expect(within(fup).getByText('1.475 envios · 83 responderam · 1.118 inscrições ativas')).toBeInTheDocument();
 
     // Os atrasados vêm de bruna_followups: vencidos, não cumpridos, não cancelados.
@@ -527,7 +528,7 @@ describe('Visão geral', () => {
     expect(screen.getByText('Configurar ANTHROPIC_API_KEY nos segredos do projeto Supabase')).toBeInTheDocument();
     expect(screen.getByText('2 pendências')).toBeInTheDocument();
     expect(screen.getAllByText('desde 05/11/2026')).toHaveLength(2);
-    expect(screen.getByRole('link', { name: 'Configurações › Geral' })).toHaveAttribute('href', '/configuracoes/geral');
+    expect(screen.getByRole('link', { name: 'Configurações › Geral' })).toHaveAttribute('href', rota('/configuracoes/geral'));
     const config = chamadasDeTabela.find((x) => x.tabela === 'bruna_gestor_config') as ChamadaDeTabela;
     expect(config.ops).toEqual(expect.arrayContaining([['select', ['valor']], ['eq', ['chave', 'pendencias']]]));
     primeira.unmount();
@@ -553,13 +554,13 @@ describe('Visão geral', () => {
     expect(screen.getByText('03/11 06:04')).toBeInTheDocument();
     expect(screen.getByText(/sugestões esperando decisão/)).toHaveTextContent('3 sugestões esperando decisão');
 
-    expect(screen.getByRole('link', { name: 'v1' })).toHaveAttribute('href', '/configuracoes/nucleo');
+    expect(screen.getByRole('link', { name: 'v1' })).toHaveAttribute('href', rota('/configuracoes/nucleo'));
     expect(screen.getByText('04/11 23:38')).toBeInTheDocument();
     expect(screen.getByText(/orientações ativas para a Bruna/)).toHaveTextContent('2 orientações ativas para a Bruna');
 
-    expect(screen.getByRole('link', { name: /O que a Bruna mais errou esta semana\?/ })).toHaveAttribute('href', '/copiloto?pergunta=O+que+a+Bruna+mais+errou+esta+semana%3F');
-    expect(screen.getByRole('link', { name: /Quais leads agendados estão sem confirmação\?/ })).toHaveAttribute('href', '/copiloto?pergunta=Quais+leads+agendados+est%C3%A3o+sem+confirma%C3%A7%C3%A3o%3F');
-    expect(screen.getByRole('link', { name: /Resuma os chamados com erro/ })).toHaveAttribute('href', '/copiloto?pergunta=Resuma+os+chamados+com+erro');
+    expect(screen.getByRole('link', { name: /O que a Bruna mais errou esta semana\?/ })).toHaveAttribute('href', rota('/copiloto?pergunta=O+que+a+Bruna+mais+errou+esta+semana%3F'));
+    expect(screen.getByRole('link', { name: /Quais leads agendados estão sem confirmação\?/ })).toHaveAttribute('href', rota('/copiloto?pergunta=Quais+leads+agendados+est%C3%A3o+sem+confirma%C3%A7%C3%A3o%3F'));
+    expect(screen.getByRole('link', { name: /Resuma os chamados com erro/ })).toHaveAttribute('href', rota('/copiloto?pergunta=Resuma+os+chamados+com+erro'));
 
     const sugestoes = chamadasDeTabela.find((x) => x.tabela === 'bruna_sugestoes') as ChamadaDeTabela;
     expect(sugestoes.ops).toEqual(expect.arrayContaining([['select', ['id', { count: 'exact', head: true }]], ['eq', ['status', 'pendente']]]));
@@ -579,7 +580,7 @@ describe('Visão geral', () => {
   it('o número da versão do núcleo sai inteiro, sem separador de milhar', async () => {
     tabela.responder = respostaDasTabelas({ bruna_prompt_atual: { data: { ...PROMPT_ATUAL, numero: 1000 }, error: null } });
     renderizar();
-    expect(await screen.findByRole('link', { name: 'v1000' })).toHaveAttribute('href', '/configuracoes/nucleo');
+    expect(await screen.findByRole('link', { name: 'v1000' })).toHaveAttribute('href', rota('/configuracoes/nucleo'));
     expect(screen.queryByText('v1.000')).not.toBeInTheDocument();
   });
 
@@ -590,7 +591,7 @@ describe('Visão geral', () => {
     }));
     renderizar();
     expect(await screen.findByText('Nada pede atenção agora')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver leads sem resposta' })).toHaveAttribute('href', '/leads?filtro=sem_resposta_24h');
+    expect(screen.getByRole('link', { name: 'Ver leads sem resposta' })).toHaveAttribute('href', rota('/leads?filtro=sem_resposta_24h'));
     expect(await screen.findByText('Sem erros no período')).toBeInTheDocument();
     expect(screen.getByText('nenhum agora')).toBeInTheDocument();
   });
@@ -617,7 +618,7 @@ describe('Visão geral', () => {
   });
 
   it('guarda o período em ?dias= e refaz as consultas com o período novo', async () => {
-    renderizar('/?dias=30');
+    renderizar(rota('/?dias=30'));
     expect(screen.getByRole('button', { name: '30 dias' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText(/Últimos 30 dias/)).toBeInTheDocument();
     await waitFor(() => expect(chamadas('bruna_gestor_serie_diaria')).toHaveLength(1));
@@ -626,7 +627,7 @@ describe('Visão geral', () => {
     expect(diasDoPeriodo(chamadas('bruna_gestor_metricas')[0][1])).toBeCloseTo(30, 5);
 
     fireEvent.click(screen.getByRole('button', { name: '14 dias' }));
-    expect(screen.getByTestId('local')).toHaveTextContent('/?dias=14');
+    expect(screen.getByTestId('local')).toHaveTextContent(rota('/?dias=14'));
     expect(screen.getByRole('button', { name: '14 dias' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText(/Últimos 14 dias/)).toBeInTheDocument();
     await waitFor(() => expect(chamadas('bruna_gestor_serie_diaria').some(([, a]) => (a as { p_de: string }).p_de === '2026-10-23T03:00:00.000Z')).toBe(true));
@@ -648,7 +649,7 @@ describe('Visão geral', () => {
     const alerta = await screen.findByRole('alert');
     expect(alerta).toHaveTextContent('Régua pausada: escada de 24 h');
     expect(alerta).toHaveTextContent('Feriado em SP · por ia.besser@besserhome.com.br');
-    expect(within(alerta).getByRole('link', { name: 'Abrir Régua' })).toHaveAttribute('href', '/regua');
+    expect(within(alerta).getByRole('link', { name: 'Abrir Régua' })).toHaveAttribute('href', rota('/regua'));
     // O mesmo aviso que a RPC de alertas traz não aparece duas vezes.
     await screen.findByText('2 agora');
     expect(screen.queryByText('Régua pausada pelo gestor')).not.toBeInTheDocument();
@@ -697,7 +698,7 @@ describe('funções puras da visão geral', () => {
     const comRevisoes = linhasDeErro({ ...ERROS, revisoes_por_tipo: [{ tipo: 'horario_sem_tool', graves: 2, medias: 1, leves: 0, total: 3 }] } as never, { ...METRICAS, chamados_com_erro: 1, encaminhamentos_com_erro: 4, duvidas_sem_acerto: 5 } as never);
     expect(comRevisoes.map((l) => l.chave)).toEqual(['descartes', 'duvidas', 'encaminhamentos', 'revisao_horario_sem_tool', 'horarios', 'chamados']);
     const revisao = comRevisoes.find((l) => l.chave === 'revisao_horario_sem_tool');
-    expect(revisao).toMatchObject({ rotulo: 'Revisão: horario sem tool', n: 3, detalhe: '2 graves', caneta: true, rota: '/leads?filtro=com_revisao' });
+    expect(revisao).toMatchObject({ rotulo: 'Revisão: horario sem tool', n: 3, detalhe: '2 graves', caneta: true, rota: rota('/leads?filtro=com_revisao') });
   });
 
   it('periodoDaSerie começa à meia-noite de São Paulo e conta hoje como um dos dias', () => {

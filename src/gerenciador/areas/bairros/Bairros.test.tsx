@@ -16,6 +16,7 @@ import {
   PAINEL_SP, PENDENCIAS, PRACAS_DO_BANCO, SIMULACAO_BOSQUE_DA_SAUDE, SIMULACAO_REMOVER_VILA_ALPINA, SIMULACAO_SEM_EFEITO,
   SIMULACAO_VILA, TESTE_BOSQUE_DA_SAUDE, TESTE_JD_PAULISTANO,
 } from './dadosDeTeste';
+import { rota } from '@/gerenciador/lib/rotas';
 
 type Operacao = [string, unknown[]];
 type Resposta = { data: unknown; error: unknown };
@@ -113,14 +114,14 @@ function OndeEstou() {
   return <output data-testid="url">{l.pathname}{l.search}</output>;
 }
 
-function renderizar(url = '/bairros') {
+function renderizar(url = rota('/bairros')) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[url]}>
         <Routes>
-          <Route path="/bairros" element={<Bairros />} />
-          <Route path="/leads" element={<p>lista de leads</p>} />
+          <Route path={rota('/bairros')} element={<Bairros />} />
+          <Route path={rota('/leads')} element={<p>lista de leads</p>} />
         </Routes>
         <OndeEstou />
       </MemoryRouter>
@@ -148,14 +149,14 @@ describe('lista da praça', () => {
     expect(bairros.getByText('só se a cidade for Campinas')).toBeInTheDocument();
     expect(bairros.getByText('É a Vila Alpina de Valinhos; a da zona leste de São Paulo não entra.')).toBeInTheDocument();
     // O número leva ao recorte do item em Leads: a lista traz os mesmos leads que o painel contou.
-    expect(bairros.getByRole('link', { name: '44 leads de Pinheiros' })).toHaveAttribute('href', '/leads?region=sp&foco=bairro%3APinheiros&dias=90');
-    expect(bairros.getByRole('link', { name: '19 agendados de Pinheiros' })).toHaveAttribute('href', '/leads?region=sp&foco=bairro%3APinheiros&dias=90&filtro=agendados');
+    expect(bairros.getByRole('link', { name: '44 leads de Pinheiros' })).toHaveAttribute('href', rota('/leads?region=sp&foco=bairro%3APinheiros&dias=90'));
+    expect(bairros.getByRole('link', { name: '19 agendados de Pinheiros' })).toHaveAttribute('href', rota('/leads?region=sp&foco=bairro%3APinheiros&dias=90&filtro=agendados'));
     // A última mudança: quem mexeu pelo gerenciador, ou o repositório.
     expect(bairros.getByText('bruno@besserhome.com.br')).toBeInTheDocument();
     expect(bairros.getAllByText('repositório').length).toBe(ITENS_SP.filter((i) => i.tipo === 'bairro').length - 1);
 
     expect(nomesNaTabela('Cidades inteiras')).toEqual(['Barueri', 'Santana de Parnaíba']);
-    expect(tabelaDe('Cidades inteiras').getByRole('link', { name: '9 leads de Santana de Parnaíba' })).toHaveAttribute('href', '/leads?region=sp&foco=cidade%3ASantana+de+Parna%C3%ADba&dias=90');
+    expect(tabelaDe('Cidades inteiras').getByRole('link', { name: '9 leads de Santana de Parnaíba' })).toHaveAttribute('href', rota('/leads?region=sp&foco=cidade%3ASantana+de+Parna%C3%ADba&dias=90'));
 
     const totais = within(screen.getByRole('region', { name: 'Leads da praça no período' }));
     expect(totais.getByText('1.369')).toBeInTheDocument();
@@ -181,7 +182,7 @@ describe('lista da praça', () => {
     await esperarLista();
     fireEvent.click(screen.getByRole('button', { name: /Rio de Janeiro/ }));
     await waitFor(() => expect(rpc).toHaveBeenCalledWith('bruna_gestor_bairros_foco_painel', { p_region: 'rj', p_dias: 90 }));
-    expect(screen.getByTestId('url')).toHaveTextContent('/bairros?praca=rj');
+    expect(screen.getByTestId('url')).toHaveTextContent(rota('/bairros?praca=rj'));
     await waitFor(() => expect(nomesNaTabela('Bairros')[0]).toBe('Barra da Tijuca'));
     expect(screen.getByRole('button', { name: /Rio de Janeiro/ })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('button', { name: /São Paulo/ })).not.toHaveAttribute('aria-current');
@@ -190,7 +191,7 @@ describe('lista da praça', () => {
   });
 
   it('lê a praça e a busca da URL e filtra pelo nome sem acento', async () => {
-    renderizar('/bairros?praca=rj&q=leblon');
+    renderizar(rota('/bairros?praca=rj&q=leblon'));
     await esperarLista();
     expect(rpc).toHaveBeenCalledWith('bruna_gestor_bairros_foco_painel', { p_region: 'rj', p_dias: 90 });
     expect(screen.getByLabelText('Buscar na lista')).toHaveValue('leblon');
@@ -199,13 +200,13 @@ describe('lista da praça', () => {
 
     fireEvent.change(screen.getByLabelText('Buscar na lista'), { target: { value: 'gavea' } });
     expect(nomesNaTabela('Bairros')).toEqual(['Gávea']);
-    expect(screen.getByTestId('url')).toHaveTextContent('/bairros?praca=rj&q=gavea');
+    expect(screen.getByTestId('url')).toHaveTextContent(rota('/bairros?praca=rj&q=gavea'));
   });
 
   it('praça sem consultoria na URL sai dela e a tela abre em SP', async () => {
-    renderizar('/bairros?praca=brasil');
+    renderizar(rota('/bairros?praca=brasil'));
     await esperarLista();
-    await waitFor(() => expect(screen.getByTestId('url').textContent).toBe('/bairros'));
+    await waitFor(() => expect(screen.getByTestId('url').textContent).toBe(rota('/bairros')));
     expect(rpc).toHaveBeenCalledWith('bruna_gestor_bairros_foco_painel', { p_region: 'sp', p_dias: 90 });
   });
 
@@ -218,12 +219,12 @@ describe('lista da praça', () => {
     // No foco: a lista desta tela, que divide esses leads por item.
     fireEvent.click(totais.getByRole('button', { name: /^No foco/ }));
     expect(document.activeElement).toContainElement(screen.getByRole('heading', { name: 'Lista de São Paulo' }));
-    expect(screen.getByTestId('url').textContent).toBe('/bairros');
+    expect(screen.getByTestId('url').textContent).toBe(rota('/bairros'));
 
     // Com bairro (e sem bairro): os leads da praça.
     fireEvent.click(totais.getByRole('button', { name: /^Com bairro/ }));
     expect(await screen.findByText('lista de leads')).toBeInTheDocument();
-    expect(screen.getByTestId('url').textContent).toBe('/leads?region=sp');
+    expect(screen.getByTestId('url').textContent).toBe(rota('/leads?region=sp'));
   });
 
   it('sem a pendência do nó, o aviso some', async () => {
@@ -262,9 +263,9 @@ describe('adicionar e editar', () => {
     const conferidos = efeito.getByText(/leads dos últimos 180 dias com bairro parecido foram conferidos/);
     expect(conferidos.querySelector('span')?.textContent).toBe('9');
     const marina = efeito.getByRole('link', { name: /Marina Couto/ });
-    expect(marina).toHaveAttribute('href', '/leads/26412');
+    expect(marina).toHaveAttribute('href', rota('/leads/26412'));
     expect(marina).toHaveAttribute('target', '_blank');
-    expect(efeito.getByRole('link', { name: /Lead 24871/ })).toHaveAttribute('href', '/leads/24871');
+    expect(efeito.getByRole('link', { name: /Lead 24871/ })).toHaveAttribute('href', rota('/leads/24871'));
     expect(efeito.getAllByText('fora do foco')).toHaveLength(5);
 
     fireEvent.click(dialogo.getByRole('button', { name: 'Salvar' }));
@@ -298,7 +299,7 @@ describe('adicionar e editar', () => {
     expect(efeito.getByText('passam a foco').parentElement?.querySelector('dd')?.textContent).toBe('105');
     // A lista tem 100 dos 105, e a conta não é de todos os 375.
     expect(efeito.getByText('O banco devolve até 100 leads; a conta acima é dos 300 conferidos.')).toBeInTheDocument();
-    expect(efeito.getByRole('link', { name: /Lead 28960/ })).toHaveAttribute('href', '/leads/28960');
+    expect(efeito.getByRole('link', { name: /Lead 28960/ })).toHaveAttribute('href', rota('/leads/28960'));
     expect(efeito.getAllByText(/^chegou em/)).toHaveLength(20);
     fireEvent.click(efeito.getByRole('button', { name: 'Mostrar os 100' }));
     expect(efeito.getAllByText(/^chegou em/)).toHaveLength(100);
@@ -412,7 +413,7 @@ describe('adicionar e editar', () => {
   it('mostra os avisos que o banco devolve ao salvar', async () => {
     const aviso = 'O núcleo “bueno” de Bueno é o mesmo de Setor Bueno: quem disser só “Bueno” continua caindo em Setor Bueno.';
     sobrescritas.set('bruna_gestor_bairro_foco_salvar', (args) => ({ ...(respostaPadrao('bruna_gestor_bairro_foco_salvar', args) as object), avisos: [aviso] }));
-    renderizar('/bairros?praca=goiania');
+    renderizar(rota('/bairros?praca=goiania'));
     await esperarLista();
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
     const dialogo = within(await screen.findByRole('dialog'));
@@ -490,7 +491,7 @@ describe('adicionar e editar', () => {
     await esperarLista();
     const pedidos = painelChamado('Pedidos fora do foco');
     expect(pedidos.getByText(/Bairros que leads de São Paulo informaram nos últimos 90 dias/)).toBeInTheDocument();
-    expect(pedidos.getByRole('link', { name: '14 leads de Mooca: ver na lista de leads' })).toHaveAttribute('href', '/leads?region=sp&foco=fora%3AMooca&dias=90');
+    expect(pedidos.getByRole('link', { name: '14 leads de Mooca: ver na lista de leads' })).toHaveAttribute('href', rota('/leads?region=sp&foco=fora%3AMooca&dias=90'));
     expect(pedidos.queryByText('Bosque da Saúde')).not.toBeInTheDocument();
     fireEvent.click(pedidos.getByRole('button', { name: 'Mostrar os 12' }));
     expect(pedidos.getByText('Bosque da Saúde')).toBeInTheDocument();
@@ -510,7 +511,7 @@ describe('remover e mover', () => {
     fireEvent.click(tabelaDe('Bairros').getByRole('button', { name: 'Remover Vila Alpina' }));
     const alerta = within(await screen.findByRole('alertdialog'));
     expect(alerta.getByText('Remover Vila Alpina da lista de São Paulo?')).toBeInTheDocument();
-    expect(await alerta.findByRole('link', { name: /Silvia Arantes/ })).toHaveAttribute('href', '/leads/26990');
+    expect(await alerta.findByRole('link', { name: /Silvia Arantes/ })).toHaveAttribute('href', rota('/leads/26990'));
     expect(chamadas('bruna_gestor_bairro_foco_simular')).toEqual([{ p_acao: 'remover', p_region: 'sp', p_tipo: 'bairro', p_nome: 'Vila Alpina', p_dias: 180 }]);
     expect(alerta.getByText('deixam o foco').parentElement?.querySelector('dd')?.textContent).toBe('1');
 
@@ -751,7 +752,7 @@ describe('vazio e erro', () => {
   });
 
   it('busca sem resultado oferece limpar e adicionar o que foi buscado', async () => {
-    renderizar('/bairros?q=Mooca');
+    renderizar(rota('/bairros?q=Mooca'));
     expect(await screen.findByText('Nenhum item com “Mooca”')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Adicionar “Mooca”/ }));
     const dialogo = within(await screen.findByRole('dialog'));
@@ -760,7 +761,7 @@ describe('vazio e erro', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Limpar busca' }));
     await esperarLista();
-    expect(screen.getByTestId('url').textContent).toBe('/bairros');
+    expect(screen.getByTestId('url').textContent).toBe(rota('/bairros'));
   });
 
   it('erro ao ler as praças mostra a mensagem', async () => {

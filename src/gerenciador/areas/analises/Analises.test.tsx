@@ -14,6 +14,7 @@ import { fake } from './fakeDb.test-data';
 import { ANALISE_CONCLUIDA, ANALISE_FALHOU, ANALISE_NOVA, ANALISE_RODANDO, CONFIG_ANALISE, SUGESTOES } from './fixtures.test-data';
 import type { LinhaDeConfigAnalise } from './tipos';
 import Analises from './Analises';
+import { rota } from '@/gerenciador/lib/rotas';
 
 vi.mock('@/gerenciador/lib/db', async (importOriginal) => {
   const real = await importOriginal<typeof import('@/gerenciador/lib/db')>();
@@ -84,14 +85,14 @@ function responderComOEstado() {
   });
 }
 
-function renderizar(rota = '/analises') {
+function renderizar(url = rota('/analises')) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[rota]}>
+      <MemoryRouter initialEntries={[url]}>
         <Routes>
-          <Route path="/analises" element={<Analises />} />
-          <Route path="/analises/:analiseId" element={<Analises />} />
+          <Route path={rota('/analises')} element={<Analises />} />
+          <Route path={rota('/analises/:analiseId')} element={<Analises />} />
           <Route path="*" element={<div>fora da área</div>} />
         </Routes>
       </MemoryRouter>
@@ -219,7 +220,7 @@ describe('Análises: a lista', () => {
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Rodar' }));
 
     expect(await screen.findByText('A análise precisa da chave da Anthropic')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver a pendência em Configurações › Geral' })).toHaveAttribute('href', '/configuracoes/geral');
+    expect(screen.getByRole('link', { name: 'Ver a pendência em Configurações › Geral' })).toHaveAttribute('href', rota('/configuracoes/geral'));
     expect(toast.error).not.toHaveBeenCalled();
     expect(fake.rpc).not.toHaveBeenCalledWith('bruna_gestor_auditar', expect.objectContaining({ p_acao: 'gestor_analise_pedida' }));
   });
@@ -260,7 +261,7 @@ describe('Análises: a lista', () => {
   });
 
   it('a aba Sugestões lista as pendentes por prioridade e abre as decididas', async () => {
-    renderizar('/analises?aba=sugestoes');
+    renderizar(rota('/analises?aba=sugestoes'));
     const cartoes = await screen.findAllByRole('article');
     expect(cartoes.map((c) => c.getAttribute('aria-label'))).toEqual([
       'Perguntar o bairro antes do convite em São Paulo',

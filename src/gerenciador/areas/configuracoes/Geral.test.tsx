@@ -11,6 +11,7 @@ import Configuracoes from './Configuracoes';
 import { CONFIGS, PENDENCIAS } from './testes/dados';
 import { args, criarBancoFalso, falha, ok, tem, type Chamada } from './testes/banco';
 import { mesclarValor, trocarPendencia } from './geral/dados';
+import { rota } from '@/gerenciador/lib/rotas';
 
 const { rpc, auditarGestor, toast, estado } = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -55,13 +56,13 @@ function montarBanco() {
   estado.from = banco.from;
 }
 
-function renderizar(url = '/configuracoes/geral') {
+function renderizar(url = rota('/configuracoes/geral')) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[url]}>
         <Routes>
-          <Route path="/configuracoes/*" element={<Configuracoes />} />
+          <Route path={rota('/configuracoes/*')} element={<Configuracoes />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -98,9 +99,9 @@ describe('geral', () => {
     expect(screen.getByLabelText('Teto por resposta (tokens)')).toHaveValue(8192);
     expect(screen.getByRole('switch', { name: 'Copiloto ligado' })).toBeChecked();
     expect(screen.getByText(/Roda sozinha toda/)).toHaveTextContent('Roda sozinha toda segunda-feira às 06:00, horário de Brasília.');
-    expect(screen.getByRole('link', { name: /Mudar a agenda em Análises/ })).toHaveAttribute('href', '/analises');
+    expect(screen.getByRole('link', { name: /Mudar a agenda em Análises/ })).toHaveAttribute('href', rota('/analises'));
     expect(screen.getByText('Escada de 24 h').closest('li')).toHaveTextContent('rodando');
-    expect(screen.getByRole('link', { name: /Pausar ou retomar em Régua/ })).toHaveAttribute('href', '/regua');
+    expect(screen.getByRole('link', { name: /Pausar ou retomar em Régua/ })).toHaveAttribute('href', rota('/regua'));
     expect(screen.getByText('2 em aberto de 2')).toBeInTheDocument();
     expect(screen.getByText('Configurar ANTHROPIC_API_KEY nos segredos do projeto Supabase')).toBeInTheDocument();
   });

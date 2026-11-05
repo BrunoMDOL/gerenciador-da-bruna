@@ -10,6 +10,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Leads from './Leads';
 import { ESTADO_26634, ESTADO_28420, LINHA_DO_TEMPO_26634, MENSAGENS_26634, OBRA_27536, OBRA_27536_NO_CONTEXTO, PENDENCIAS_DO_GERENCIADOR } from './dadosDeTeste';
 import type { EventoDaLinhaDoTempo } from '@/gerenciador/lib/tipos';
+import { rota } from '@/gerenciador/lib/rotas';
 
 const { rpc, dbFrom, auditarGestor, toast, construtores } = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -46,14 +47,14 @@ function tabela(nome: string, resposta: unknown) {
   return b;
 }
 
-function renderizar(url = '/leads/26634') {
+function renderizar(url = rota('/leads/26634')) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[url]}>
         <Routes>
-          <Route path="/leads" element={<Leads />} />
-          <Route path="/leads/:contatoId" element={<Leads />} />
+          <Route path={rota('/leads')} element={<Leads />} />
+          <Route path={rota('/leads/:contatoId')} element={<Leads />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -94,7 +95,7 @@ describe('detalhe do lead', () => {
     // A tag no cabeçalho e, no contexto, "Entregue: sim, pela tag …".
     expect(screen.getAllByText('Online Leandro Henrique')).toHaveLength(2);
     expect(screen.getByText('Bruna ligada')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Analisar com o Copiloto/ })).toHaveAttribute('href', '/copiloto?contato=26634');
+    expect(screen.getByRole('link', { name: /Analisar com o Copiloto/ })).toHaveAttribute('href', rota('/copiloto?contato=26634'));
     expect(screen.getByRole('link', { name: /Abrir no Besser Talk/ })).toHaveAttribute('href', 'https://bruna-chat-manager.lovable.app/?lead=26634');
 
     // A conversa, com os balões do painel e o nome de quem do time enviou.
@@ -318,7 +319,7 @@ describe('detalhe do lead', () => {
 
   it('fora de SP, RJ e Goiânia a revisão fica desabilitada e aponta a orientação', async () => {
     rpc.mockImplementation(async (nome: string) => (nome === 'bruna_gestor_lead_estado' ? ESTADO_28420 : []));
-    renderizar('/leads/28420');
+    renderizar(rota('/leads/28420'));
     await screen.findByRole('heading', { level: 1, name: 'JF' });
     expect(screen.getByRole('button', { name: /Nova revisão/ })).toBeDisabled();
     expect(screen.getByText(/só existe em SP, RJ e Goiânia; este lead é do funil Brasil/)).toBeInTheDocument();
@@ -329,13 +330,13 @@ describe('detalhe do lead', () => {
 
   it('diz quando o lead não existe', async () => {
     rpc.mockImplementation(async () => ({ ...ESTADO_26634, contato: null, contexto: null, regiao: null }));
-    renderizar('/leads/999999');
+    renderizar(rota('/leads/999999'));
     expect(await screen.findByText('Não há lead nº 999999')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Voltar aos leads/ })).toHaveAttribute('href', '/leads');
+    expect(screen.getByRole('link', { name: /Voltar aos leads/ })).toHaveAttribute('href', rota('/leads'));
   });
 
   it('não chama o banco com um id que não é número', async () => {
-    renderizar('/leads/abc');
+    renderizar(rota('/leads/abc'));
     expect(await screen.findByText('Não há lead nº abc')).toBeInTheDocument();
     expect(rpc).not.toHaveBeenCalled();
   });
