@@ -95,7 +95,7 @@ describe('detalhe do lead', () => {
     expect(screen.getAllByText('Online Leandro Henrique')).toHaveLength(2);
     expect(screen.getByText('Bruna ligada')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Analisar com o Copiloto/ })).toHaveAttribute('href', '/copiloto?contato=26634');
-    expect(screen.getByRole('link', { name: /Abrir no painel/ })).toHaveAttribute('href', '/?lead=26634');
+    expect(screen.getByRole('link', { name: /Abrir no Besser Talk/ })).toHaveAttribute('href', 'https://bruna-chat-manager.lovable.app/?lead=26634');
 
     // A conversa, com os balões do painel e o nome de quem do time enviou.
     expect(screen.getByText('Para película transparente, os valores vão de R$397 a R$1.290 o m² aplicado, com material, aplicação e garantia.')).toBeInTheDocument();

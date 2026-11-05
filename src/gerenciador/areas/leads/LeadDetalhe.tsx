@@ -18,6 +18,7 @@ import { useAcoesDoLead, useLeadEstado } from './dados';
 import { situacaoDaRevisao, situacaoDoRetorno } from './situacoes';
 import { siglaDaRegiao } from './textos';
 import { rota } from '@/gerenciador/lib/rotas';
+import { BESSER_TALK_URL } from '@/gerenciador/layout/GerenciadorShell';
 
 type AbaDoCelular = 'conversa' | 'estado' | 'tempo';
 type AbaDaDireita = 'estado' | 'tempo';
@@ -133,8 +134,8 @@ function LeadCarregado({ estado, contatoId }: { estado: LeadEstado; contatoId: n
             <Link to={rota(`/copiloto?contato=${contatoId}`)}><Sparkles className="h-4 w-4" strokeWidth={1.75} aria-hidden /> Analisar com o Copiloto</Link>
           </Button>
           <Button variant="outline" asChild>
-            <a href={`/?lead=${contatoId}`} target="_blank" rel="noopener noreferrer" title="Abre a conversa no painel de atendimento, em outra aba">
-              <ExternalLink className="h-4 w-4" strokeWidth={1.75} aria-hidden /> Abrir no painel
+            <a href={`${BESSER_TALK_URL}/?lead=${contatoId}`} target="_blank" rel="noopener noreferrer" title="Abre a conversa deste lead no Besser Talk, em outra aba">
+              <ExternalLink className="h-4 w-4" strokeWidth={1.75} aria-hidden /> Abrir no Besser Talk
             </a>
           </Button>
         </>
