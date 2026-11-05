@@ -1,0 +1,329 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Besser Talk — mundo "Croqui" com as cores do manual da marca
+   (29/09/2026): Black Piano (Pantone 6C, #101820) é a tinta,
+   Platinum (Pantone 663C, #E5E1E6) é a folha das superfícies, e o
+   Coral Red (Pantone 179C, #E03C31) é a cor da Bruna e da ação.
+   Contrato em .impeccable/surfaces/.
+
+   Quem fala se vê pela cor: a Bruna em coral, o atendente em balão
+   invertido (Black Piano no claro, Platinum no escuro), o cliente em
+   folha. --primary é um coral um pouco mais fundo (#D32E22) para o
+   número branco dos contadores passar de 4,5:1; o coral exato da
+   marca fica em --croqui-red, para traço e número grande. Texto
+   pequeno em vermelho sobre folha usa --croqui-red-text (#B8322A).
+   ============================================================ */
+
+@layer base {
+  :root {
+    --croqui-sheet: 255 255 255;
+    --croqui-ink: 16 24 32;
+    --croqui-soft: 94 101 112;
+    --croqui-rule: 214 209 216;
+    --croqui-faint: 244 242 245;
+    --croqui-red: 224 60 49;
+    --croqui-red-text: 184 50 42;
+
+    --background: 285 11% 95%;
+    --foreground: 210 33% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 33% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 33% 9%;
+
+    --primary: 4 72% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --action: 210 33% 9%;
+    --action-foreground: 288 9% 96%;
+
+    --secondary: 288 9% 91%;
+    --secondary-foreground: 210 33% 9%;
+    --muted: 288 9% 91%;
+    --muted-foreground: 215 9% 38%;
+    --accent: 288 10% 92%;
+    --accent-foreground: 210 33% 9%;
+    --destructive: 2 65% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 285 7% 84%;
+    --input: 285 7% 84%;
+    --ring: 4 72% 48%;
+
+    --radius: 0.125rem;
+
+    /* A Bruna fala em coral (rótulo, ícone e balão tingido); o atendente,
+       raro e decisivo, fica em Black Piano cheio. Os dois sempre
+       acompanhados do rótulo — a cor só reforça. */
+    --bot: 4 63% 44%;
+    --bot-foreground: 0 0% 100%;
+    --human: 210 33% 9%;
+    --human-foreground: 288 9% 96%;
+    --info: 210 45% 38%;
+    --info-foreground: 0 0% 100%;
+
+    --bubble-agent: 5 78% 95%;
+    /* Bruna Pós-venda e Bruna Reconquista: verde-água, para não confundir com a SDR. */
+    --bubble-posvenda: 170 55% 92%;
+    --posvenda: 170 70% 28%;
+    --bubble-human: 210 33% 9%;
+    --bubble-human-foreground: 288 9% 94%;
+    --bubble-human-muted: 214 12% 72%;
+    --bubble-customer: 0 0% 100%;
+    --success: 150 45% 30%;
+    --success-foreground: 0 0% 100%;
+    /* Âmbar escuro: no claro ele aparece quase sempre como texto (e em fundo
+       translúcido), então precisa de 4,5:1 sobre a folha — este dá 5,2:1. */
+    --warning: 33 92% 33%;
+    --warning-foreground: 0 0% 100%;
+
+    /* séries de gráfico — as mesmas validadas para daltonismo */
+    --series-1: 213 68% 50%;
+    --series-2: 17 82% 56%;
+    --series-3: 159 73% 40%;
+    --series-4: 41 100% 47%;
+
+    --hairline: inset 0 0 0 0 transparent;
+    --elev-1: 0 0 0 1px hsl(285 7% 84%);
+    --elev-2: 0 0 0 1px hsl(210 33% 9%), 0 18px 40px -22px rgb(16 24 32 / 0.35);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 210 33% 9%;
+    --sidebar-primary: 4 72% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 288 10% 92%;
+    --sidebar-accent-foreground: 210 33% 9%;
+    --sidebar-border: 285 7% 84%;
+    --sidebar-ring: 4 72% 48%;
+  }
+
+  .dark {
+    --croqui-sheet: 16 24 32;
+    --croqui-ink: 229 225 230;
+    --croqui-soft: 155 163 174;
+    --croqui-rule: 44 56 68;
+    --croqui-faint: 24 34 44;
+    --croqui-red: 224 60 49;
+    --croqui-red-text: 243 124 114;
+
+    --background: 210 35% 7%;
+    --foreground: 288 9% 89%;
+    --card: 210 33% 9%;
+    --card-foreground: 288 9% 89%;
+    --popover: 210 29% 12%;
+    --popover-foreground: 288 9% 89%;
+
+    --primary: 4 72% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --action: 288 9% 89%;
+    --action-foreground: 210 33% 9%;
+
+    --secondary: 210 29% 13%;
+    --secondary-foreground: 288 9% 89%;
+    --muted: 210 29% 13%;
+    --muted-foreground: 214 9% 65%;
+    --accent: 210 25% 15%;
+    --accent-foreground: 288 9% 89%;
+    --destructive: 4 85% 62%;
+    --destructive-foreground: 223 14% 10%;
+    --border: 210 23% 19%;
+    --input: 210 23% 19%;
+    --ring: 4 74% 58%;
+
+    --bot: 5 85% 70%;
+    --bot-foreground: 210 33% 9%;
+    --human: 288 9% 89%;
+    --human-foreground: 210 33% 9%;
+    --info: 210 60% 65%;
+    --info-foreground: 223 14% 10%;
+
+    --bubble-agent: 352 30% 18%;
+    --bubble-posvenda: 170 35% 16%;
+    --posvenda: 170 55% 62%;
+    --bubble-human: 288 9% 89%;
+    --bubble-human-foreground: 210 33% 9%;
+    --bubble-human-muted: 215 12% 32%;
+    --bubble-customer: 210 29% 13%;
+    --success: 150 45% 55%;
+    --success-foreground: 223 14% 10%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 223 14% 10%;
+
+    --series-1: 213 77% 56%;
+    --series-2: 17 70% 50%;
+    --series-3: 159 73% 36%;
+    --series-4: 40 100% 39%;
+
+    --hairline: inset 0 0 0 0 transparent;
+    --elev-1: 0 0 0 1px hsl(210 23% 19%);
+    --elev-2: 0 0 0 1px hsl(210 23% 28%), 0 22px 48px -24px rgb(0 0 0 / 0.9);
+
+    --sidebar-background: 210 33% 9%;
+    --sidebar-foreground: 288 9% 89%;
+    --sidebar-primary: 4 72% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 25% 15%;
+    --sidebar-accent-foreground: 288 9% 89%;
+    --sidebar-border: 210 23% 19%;
+    --sidebar-ring: 4 74% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  /* Balão do atendente invertido: dentro dele, tinta e texto de apoio
+     trocam de lado (vale na conversa, no Operacional e no chat do
+     representante, que usam o mesmo balão). */
+  .bg-bubble-human {
+    --foreground: var(--bubble-human-foreground);
+    --muted-foreground: var(--bubble-human-muted);
+    --human: var(--bubble-human-muted);
+    --primary: var(--bubble-human-foreground);
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Barlow", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    caret-color: rgb(var(--croqui-red));
+    accent-color: rgb(var(--croqui-ink));
+    text-underline-offset: 3px;
+  }
+
+  /* As partes que o navegador desenha também vestem o croqui. */
+  ::selection {
+    background-color: rgb(var(--croqui-red) / 0.2);
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 1.5px solid rgb(var(--croqui-ink));
+    outline-offset: 2px;
+  }
+
+  html {
+    scrollbar-color: rgb(var(--croqui-rule)) transparent;
+  }
+
+  /* Números que atualizam em tempo real não podem mudar de largura a cada
+     tick — senão a linha inteira "pula". */
+  .tabular,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Superfície "elevada" no croqui é folha contornada por traço de 1px;
+     sombra de verdade só em sobreposição (elev-2: popover, diálogo). */
+  .hairline {
+    box-shadow: var(--hairline);
+  }
+  .elev-1 {
+    box-shadow: var(--elev-1), var(--hairline);
+  }
+  .elev-2 {
+    box-shadow: var(--elev-2), var(--hairline);
+  }
+
+  .font-display {
+    font-family: "Barlow", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  /* Número é medida: Barlow Semi Condensed com algarismos tabulares. */
+  .font-data {
+    font-family: "Barlow Semi Condensed", "Barlow", ui-sans-serif, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* No croqui não há vidro: a folha é opaca e o traço separa. O nome da
+     classe ficou para não mexer nos cabeçalhos e modais que a usam. */
+  .glass {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  .tabs-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.6) transparent;
+  }
+  .tabs-scroll::-webkit-scrollbar {
+    height: 4px;
+    width: 0;
+  }
+  .tabs-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .tabs-scroll::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--primary) / 0.6);
+    border-radius: 999px;
+  }
+  .tabs-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--primary) / 0.85);
+  }
+}
+
+/* Alvo de toque. Boa parte dos botões de ícone do painel tem 32px, que é
+   confortável no mouse e apertado no polegar. Em ponteiro grosso o mínimo sobe
+   para 40px sem mexer no tamanho do ícone nem no layout de mouse. */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  a[data-touch-target] {
+    min-height: 40px;
+  }
+
+  button:has(> svg:only-child),
+  [role="button"]:has(> svg:only-child) {
+    min-width: 40px;
+  }
+}
+
+/* Movimento: só transform e opacity, e nada quando o sistema pede calma. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Selo "Edit with Lovable". Quem coloca é a hospedagem do Lovable, fora do
+   código, e o próprio estilo dele usa !important. O id repetido não é erro:
+   com dois ids o seletor ganha de qualquer regra do Lovable que use um id só,
+   mesmo com classes junto. Se o Lovable trocar o id do selo, ou puser o
+   estilo direto na tag com !important, esta regra deixa de funcionar e o
+   selo volta. */
+html body #lovable-badge#lovable-badge {
+  display: none !important;
+}
