@@ -67,7 +67,7 @@ vi.mock('@/gerenciador/lib/acesso', () => ({
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }));
 
 import VisaoGeral from './VisaoGeral';
-import { lerDias, lerPendencias, periodoDaSerie } from './dados';
+import { janelaDoPeriodo, lerDias, lerPendencias, periodoDaSerie } from './dados';
 import { linhasDeErro, ordenarAlertas } from './calculos';
 import { rota } from '@/gerenciador/lib/rotas';
 
@@ -350,6 +350,7 @@ describe('Visão geral', () => {
     expect(screen.getByText(/Últimos 7 dias/)).toBeInTheDocument();
 
     await waitFor(() => expect(valorDaMedida('Leads atendidos')).toBe('693'));
+    expect(screen.getByText('Variação contra os 7 dias anteriores.')).toBeInTheDocument();
     expect(valorDaMedida('Responderam')).toBe('760');
     expect(valorDaMedida('Agendados pela Bruna')).toBe('42');
     expect(valorDaMedida('Convites')).toBe('42');
@@ -619,6 +620,10 @@ describe('Visão geral', () => {
 
   it('guarda o período em ?dias= e refaz as consultas com o período novo', async () => {
     renderizar(rota('/?dias=30'));
+    // Os cinco botões do seletor, nesta ordem, só o escolhido em tinta cheia.
+    const seletor = within(screen.getByRole('group', { name: 'Período' }));
+    expect(seletor.getAllByRole('button').map((b) => b.textContent)).toEqual(['Hoje', 'Ontem', '7 dias', '14 dias', '30 dias']);
+    expect(seletor.getAllByRole('button').filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent)).toEqual(['30 dias']);
     expect(screen.getByRole('button', { name: '30 dias' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText(/Últimos 30 dias/)).toBeInTheDocument();
     await waitFor(() => expect(chamadas('bruna_gestor_serie_diaria')).toHaveLength(1));
@@ -634,11 +639,68 @@ describe('Visão geral', () => {
     await waitFor(() => expect(chamadas('bruna_gestor_erros').some(([, a]) => Math.round(diasDoPeriodo(a)) === 14)).toBe(true));
   });
 
-  it('um ?dias= fora de 7/14/30 cai em 7', () => {
+  it('um ?dias= fora de hoje/ontem/7/14/30 cai em 7', () => {
     expect(lerDias('30')).toBe(30);
+    expect(lerDias('hoje')).toBe('hoje');
+    expect(lerDias('ontem')).toBe('ontem');
     expect(lerDias('9')).toBe(7);
+    expect(lerDias('1')).toBe(7);
+    expect(lerDias('Hoje')).toBe(7);
+    expect(lerDias('anteontem')).toBe(7);
     expect(lerDias(null)).toBe(7);
     expect(lerDias('abc')).toBe(7);
+  });
+
+  it('?dias=hoje: da meia-noite de Brasília até agora, comparado com ontem até esta hora, e a série dos 7 dias com hoje em destaque', async () => {
+    renderizar(rota('/?dias=hoje'));
+    expect(screen.getByRole('button', { name: 'Hoje' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '7 dias' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText('Hoje (05/11, da meia-noite até agora), comparado com ontem até esta hora. Horário de Brasília.')).toBeInTheDocument();
+
+    await waitFor(() => expect(valorDaMedida('Leads atendidos')).toBe('693'));
+    const [atual, anterior] = chamadas('bruna_gestor_metricas').map(([, args]) => args);
+    // 01:18 de 05/11 em São Paulo: hoje começou às 03:00Z; ontem até esta hora vai de 04/11 03:00Z até 24 h atrás.
+    expect(atual).toEqual({ p_de: '2026-11-05T03:00:00.000Z', p_ate: AGORA.toISOString() });
+    expect(anterior).toEqual({ p_de: '2026-11-04T03:00:00.000Z', p_ate: '2026-11-04T04:18:07.482Z' });
+    expect(screen.getByText('Variação contra ontem até esta hora.')).toBeInTheDocument();
+    // Erros e régua usam a mesma janela.
+    await waitFor(() => expect(chamadas('bruna_gestor_erros')).toHaveLength(1));
+    expect(chamadas('bruna_gestor_erros')[0][1]).toEqual({ p_de: '2026-11-05T03:00:00.000Z', p_ate: AGORA.toISOString() });
+    await waitFor(() => expect(chamadas('bruna_gestor_regua_resumo')).toHaveLength(1));
+    expect(chamadas('bruna_gestor_regua_resumo')[0][1]).toEqual({ p_de: '2026-11-05T03:00:00.000Z', p_ate: AGORA.toISOString() });
+
+    // Um dia só não é série: os últimos 7 dias, com hoje em destaque.
+    await screen.findByText('Números dia a dia');
+    expect(chamadas('bruna_gestor_serie_diaria')).toEqual([['bruna_gestor_serie_diaria', { p_de: '2026-10-30T03:00:00.000Z', p_ate: AGORA.toISOString() }]]);
+    expect(within(painel('Dia a dia')).getByText('série dos últimos 7 dias; o dia escolhido em destaque')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Hoje \(05\/11\) em destaque\./ })).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: '05/11 (hoje)' })).toHaveClass('text-croqui-red-text');
+    expect(screen.getByRole('rowheader', { name: '04/11' })).not.toHaveClass('text-croqui-red-text');
+  });
+
+  it('?dias=ontem: o dia inteiro de ontem em Brasília, comparado com anteontem, e ontem em destaque na série', async () => {
+    renderizar(rota('/?dias=ontem'));
+    expect(screen.getByRole('button', { name: 'Ontem' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Ontem (04/11, o dia inteiro), comparado com anteontem. Horário de Brasília.')).toBeInTheDocument();
+
+    await waitFor(() => expect(chamadas('bruna_gestor_metricas')).toHaveLength(2));
+    const [atual, anterior] = chamadas('bruna_gestor_metricas').map(([, args]) => args);
+    expect(atual).toEqual({ p_de: '2026-11-04T03:00:00.000Z', p_ate: '2026-11-05T03:00:00.000Z' });
+    expect(anterior).toEqual({ p_de: '2026-11-03T03:00:00.000Z', p_ate: '2026-11-04T03:00:00.000Z' });
+    expect(await screen.findByText('Variação contra anteontem.')).toBeInTheDocument();
+    await waitFor(() => expect(chamadas('bruna_gestor_erros')).toHaveLength(1));
+    expect(chamadas('bruna_gestor_erros')[0][1]).toEqual({ p_de: '2026-11-04T03:00:00.000Z', p_ate: '2026-11-05T03:00:00.000Z' });
+
+    await screen.findByText('Números dia a dia');
+    expect(chamadas('bruna_gestor_serie_diaria')[0][1]).toEqual({ p_de: '2026-10-30T03:00:00.000Z', p_ate: AGORA.toISOString() });
+    expect(screen.getByRole('rowheader', { name: '04/11 (ontem)' })).toHaveClass('text-croqui-red-text');
+    expect(screen.getByRole('rowheader', { name: '05/11 (hoje)' })).not.toHaveClass('text-croqui-red-text');
+
+    // Trocar para Hoje guarda na URL e refaz as consultas.
+    fireEvent.click(screen.getByRole('button', { name: 'Hoje' }));
+    expect(screen.getByTestId('local')).toHaveTextContent(rota('/?dias=hoje'));
+    expect(screen.getByRole('button', { name: 'Hoje' })).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(chamadas('bruna_gestor_metricas').some(([, a]) => (a as { p_de: string }).p_de === '2026-11-05T03:00:00.000Z')).toBe(true));
   });
 
   it('régua pausada: alerta em caneta no topo, sem repetir na lista, e Retomar chama bruna_gestor_pausar_regua', async () => {
@@ -708,6 +770,42 @@ describe('funções puras da visão geral', () => {
     expect(periodoDaSerie(30, AGORA).de).toBe('2026-10-07T03:00:00.000Z');
     // 23h30 de 04/11 em São Paulo já é 05/11 em UTC, mas hoje ainda é 04/11.
     expect(periodoDaSerie(7, new Date('2026-11-05T02:30:00.000Z')).de).toBe('2026-10-29T03:00:00.000Z');
+    // Hoje e ontem não são série: saem os últimos 7 dias.
+    expect(periodoDaSerie('hoje', AGORA)).toEqual(periodoDaSerie(7, AGORA));
+    expect(periodoDaSerie('ontem', AGORA)).toEqual(periodoDaSerie(7, AGORA));
+  });
+
+  it('janelaDoPeriodo calcula hoje e ontem em horário de Brasília, e a comparação de hoje com ontem até a mesma hora', () => {
+    // 01:18 de 05/11 em São Paulo.
+    expect(janelaDoPeriodo('hoje', AGORA)).toEqual({
+      periodo: { de: '2026-11-05T03:00:00.000Z', ate: '2026-11-05T04:18:07.482Z', dias: 1 },
+      anterior: { de: '2026-11-04T03:00:00.000Z', ate: '2026-11-04T04:18:07.482Z', dias: 1 },
+      comparacao: 'ontem até esta hora',
+      dia: '2026-11-05',
+    });
+    expect(janelaDoPeriodo('ontem', AGORA)).toEqual({
+      periodo: { de: '2026-11-04T03:00:00.000Z', ate: '2026-11-05T03:00:00.000Z', dias: 1 },
+      anterior: { de: '2026-11-03T03:00:00.000Z', ate: '2026-11-04T03:00:00.000Z', dias: 1 },
+      comparacao: 'anteontem',
+      dia: '2026-11-04',
+    });
+    // 23h30 de 04/11 em São Paulo já é 05/11 em UTC: hoje ainda é 04/11, e ontem é 03/11.
+    const tarde = new Date('2026-11-05T02:30:00.000Z');
+    expect(janelaDoPeriodo('hoje', tarde).periodo).toEqual({ de: '2026-11-04T03:00:00.000Z', ate: '2026-11-05T02:30:00.000Z', dias: 1 });
+    expect(janelaDoPeriodo('hoje', tarde).anterior).toEqual({ de: '2026-11-03T03:00:00.000Z', ate: '2026-11-04T02:30:00.000Z', dias: 1 });
+    expect(janelaDoPeriodo('hoje', tarde).dia).toBe('2026-11-04');
+    expect(janelaDoPeriodo('ontem', tarde).periodo).toEqual({ de: '2026-11-03T03:00:00.000Z', ate: '2026-11-04T03:00:00.000Z', dias: 1 });
+    expect(janelaDoPeriodo('ontem', tarde).dia).toBe('2026-11-03');
+    // Virada de mês: 01/11 às 00:10 em São Paulo (03:10Z).
+    const viradaDeMes = new Date('2026-11-01T03:10:00.000Z');
+    expect(janelaDoPeriodo('ontem', viradaDeMes).periodo).toEqual({ de: '2026-10-31T03:00:00.000Z', ate: '2026-11-01T03:00:00.000Z', dias: 1 });
+    expect(janelaDoPeriodo('ontem', viradaDeMes).anterior.de).toBe('2026-10-30T03:00:00.000Z');
+    // 7/14/30 seguem a janela rolante até agora e a de mesmo tamanho logo antes.
+    const sete = janelaDoPeriodo(7, AGORA);
+    expect(sete).toMatchObject({ comparacao: 'os 7 dias anteriores', dia: null });
+    expect(sete.periodo).toEqual({ de: '2026-10-29T04:18:07.482Z', ate: '2026-11-05T04:18:07.482Z', dias: 7 });
+    expect(sete.anterior).toEqual({ de: '2026-10-22T04:18:07.482Z', ate: '2026-10-29T04:18:07.482Z', dias: 7 });
+    expect(janelaDoPeriodo(30, AGORA).periodo.de).toBe('2026-10-06T04:18:07.482Z');
   });
 
   it('ordenarAlertas põe os graves primeiro e mantém a ordem da RPC dentro da gravidade', () => {

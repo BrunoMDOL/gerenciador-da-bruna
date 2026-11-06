@@ -4,20 +4,32 @@ import { db, rpc, periodoDosUltimos, periodoAnterior, ErroDoBanco, type Periodo 
 import type {
   Alerta, Analise, DiaDaSerie, ErrosDoPeriodo, Metricas, PausasDaRegua, PendenciaDoGerenciador, PromptVersao, ResumoDaRegua,
 } from '@/gerenciador/lib/tipos';
-import { hojeEmSaoPaulo, meiaNoiteEmSaoPaulo } from './util';
+import { hojeEmSaoPaulo, meiaNoiteEmSaoPaulo, somarDias } from './util';
 
-export const DIAS_PERMITIDOS = [7, 14, 30] as const;
-export type Dias = (typeof DIAS_PERMITIDOS)[number];
+/** As chaves do seletor de período, na ordem em que aparecem: hoje, ontem e as janelas rolantes. */
+export const PERIODOS = ['hoje', 'ontem', 7, 14, 30] as const;
+export type Dias = (typeof PERIODOS)[number];
 
-/** Lê ?dias= da URL; qualquer coisa fora de 7/14/30 vira 7. */
+/** Lê ?dias= da URL ('hoje', 'ontem', 7, 14 ou 30); qualquer outra coisa vira 7. */
 export function lerDias(valor: string | null | undefined): Dias {
+  if (valor === 'hoje' || valor === 'ontem') return valor;
   const v = Number(valor);
-  return (DIAS_PERMITIDOS as readonly number[]).includes(v) ? (v as Dias) : 7;
+  return (PERIODOS as readonly unknown[]).includes(v) ? (v as Dias) : 7;
+}
+
+/** O rótulo do botão: 'Hoje', 'Ontem', '7 dias'. */
+export function rotuloDoPeriodo(dias: Dias): string {
+  return dias === 'hoje' ? 'Hoje' : dias === 'ontem' ? 'Ontem' : `${dias} dias`;
+}
+
+/** O período numa frase: 'hoje', 'ontem', 'nos últimos 7 dias'. */
+export function descreverPeriodo(dias: Dias): string {
+  return typeof dias === 'number' ? `nos últimos ${dias} dias` : dias;
 }
 
 export const chaves = {
   metricas: (dias: Dias) => ['gerenciador', 'visao-geral', 'metricas', dias] as const,
-  serie: (dias: Dias) => ['gerenciador', 'visao-geral', 'serie', dias] as const,
+  serie: (dias: Dias) => ['gerenciador', 'visao-geral', 'serie', diasDaSerie(dias)] as const,
   alertas: ['gerenciador', 'visao-geral', 'alertas'] as const,
   erros: (dias: Dias) => ['gerenciador', 'visao-geral', 'erros', dias] as const,
   regua: (dias: Dias) => ['gerenciador', 'visao-geral', 'regua', dias] as const,
@@ -25,27 +37,81 @@ export const chaves = {
   atalhos: ['gerenciador', 'visao-geral', 'atalhos'] as const,
 };
 
+export interface Janela {
+  /** O período pedido, para as RPCs de período. */
+  periodo: Periodo;
+  /** Com o que as medidas se comparam. */
+  anterior: Periodo;
+  /** Como dizer a comparação: 'ontem até esta hora', 'anteontem', 'os 7 dias anteriores'. */
+  comparacao: string;
+  /** O dia escolhido ('YYYY-MM-DD' de São Paulo) quando o período é um dia só; null nas janelas rolantes. */
+  dia: string | null;
+}
+
+/**
+ * O único lugar que calcula as janelas, em horário de Brasília:
+ * - 'hoje': da meia-noite de hoje até agora, comparado com ontem até o mesmo
+ *   horário (meia-noite de ontem até agora menos 24 h), para a variação fazer
+ *   sentido no meio do dia;
+ * - 'ontem': da meia-noite de ontem até a meia-noite de hoje, comparado com
+ *   anteontem inteiro;
+ * - 7/14/30: janela rolante até agora (periodoDosUltimos), comparada com a de
+ *   mesmo tamanho logo antes (periodoAnterior).
+ */
+export function janelaDoPeriodo(dias: Dias, agora: Date = new Date()): Janela {
+  if (dias === 'hoje') {
+    const hoje = hojeEmSaoPaulo(agora);
+    return {
+      periodo: { de: meiaNoiteEmSaoPaulo(hoje).toISOString(), ate: agora.toISOString(), dias: 1 },
+      anterior: { de: meiaNoiteEmSaoPaulo(hoje, -1).toISOString(), ate: new Date(agora.getTime() - 86_400_000).toISOString(), dias: 1 },
+      comparacao: 'ontem até esta hora',
+      dia: hoje,
+    };
+  }
+  if (dias === 'ontem') {
+    const hoje = hojeEmSaoPaulo(agora);
+    return {
+      periodo: { de: meiaNoiteEmSaoPaulo(hoje, -1).toISOString(), ate: meiaNoiteEmSaoPaulo(hoje).toISOString(), dias: 1 },
+      anterior: { de: meiaNoiteEmSaoPaulo(hoje, -2).toISOString(), ate: meiaNoiteEmSaoPaulo(hoje, -1).toISOString(), dias: 1 },
+      comparacao: 'anteontem',
+      dia: somarDias(hoje, -1),
+    };
+  }
+  const periodo = periodoDosUltimos(dias, agora);
+  return { periodo, anterior: periodoAnterior(periodo), comparacao: `os ${dias} dias anteriores`, dia: null };
+}
+
 export interface MetricasComparadas {
   atual: Metricas;
   anterior: Metricas;
   periodo: Periodo;
   periodoAnterior: Periodo;
+  /** Com o que a variação compara, para a legenda das medidas. */
+  comparacao: string;
 }
 
-/** bruna_gestor_metricas duas vezes: o período e o de mesmo tamanho logo antes. */
+/** bruna_gestor_metricas duas vezes: o período e o que se compara com ele (janelaDoPeriodo). */
 export function useMetricas(dias: Dias) {
   return useQuery({
     queryKey: chaves.metricas(dias),
     queryFn: async (): Promise<MetricasComparadas> => {
-      const periodo = periodoDosUltimos(dias);
-      const antes = periodoAnterior(periodo);
+      const { periodo, anterior: antes, comparacao } = janelaDoPeriodo(dias);
       const [atual, anterior] = await Promise.all([
         rpc<Metricas>('bruna_gestor_metricas', { p_de: periodo.de, p_ate: periodo.ate }),
         rpc<Metricas>('bruna_gestor_metricas', { p_de: antes.de, p_ate: antes.ate }),
       ]);
-      return { atual, anterior, periodo, periodoAnterior: antes };
+      return { atual, anterior, periodo, periodoAnterior: antes, comparacao };
     },
   });
+}
+
+/**
+ * Quantos dias a série desenha. Um dia só não é série, e bruna_gestor_serie_diaria
+ * conta por dia (não por hora): com 'hoje' e 'ontem' a série mostra os últimos
+ * 7 dias, com o dia escolhido em destaque.
+ */
+export function diasDaSerie(dias: Dias): 7 | 14 | 30 {
+  return typeof dias === 'number' ? dias : 7;
 }
 
 /**
@@ -56,7 +122,8 @@ export function useMetricas(dias: Dias) {
  * só com as horas depois do horário de agora, desenhado como dia inteiro.
  */
 export function periodoDaSerie(dias: Dias, agora: Date = new Date()): Periodo {
-  return { de: meiaNoiteEmSaoPaulo(hojeEmSaoPaulo(agora), -(dias - 1)).toISOString(), ate: agora.toISOString(), dias };
+  const n = diasDaSerie(dias);
+  return { de: meiaNoiteEmSaoPaulo(hojeEmSaoPaulo(agora), -(n - 1)).toISOString(), ate: agora.toISOString(), dias: n };
 }
 
 export function useSerieDiaria(dias: Dias) {
@@ -85,7 +152,7 @@ export function useErros(dias: Dias) {
   return useQuery({
     queryKey: chaves.erros(dias),
     queryFn: async (): Promise<ErrosDoPeriodo> => {
-      const p = periodoDosUltimos(dias);
+      const p = janelaDoPeriodo(dias).periodo;
       return rpc<ErrosDoPeriodo>('bruna_gestor_erros', { p_de: p.de, p_ate: p.ate });
     },
   });
@@ -122,7 +189,7 @@ export function useRegua(dias: Dias) {
   return useQuery({
     queryKey: chaves.regua(dias),
     queryFn: async (): Promise<ReguaDaVisaoGeral> => {
-      const p = periodoDosUltimos(dias);
+      const p = janelaDoPeriodo(dias).periodo;
       const [resumo, retornosAtrasados] = await Promise.all([
         rpc<ResumoDaRegua>('bruna_gestor_regua_resumo', { p_de: p.de, p_ate: p.ate }),
         contarRetornosAtrasados(),

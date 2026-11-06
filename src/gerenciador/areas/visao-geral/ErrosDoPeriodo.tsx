@@ -4,7 +4,7 @@ import { Erro, Esqueleto, Painel, Vazio } from '@/gerenciador/componentes';
 import { numero } from '@/gerenciador/lib/formatos';
 import { cn } from '@/lib/utils';
 import { linhasDeErro } from './calculos';
-import { useErros, useMetricas, type Dias } from './dados';
+import { descreverPeriodo, useErros, useMetricas, type Dias } from './dados';
 import { rotaDeLeads } from './rotas';
 import { LINK } from './util';
 
@@ -35,7 +35,7 @@ export function ErrosDoPeriodo({ dias, className }: { dias: Dias; className?: st
         <Vazio
           Icone={CircleCheck}
           titulo="Sem erros no período"
-          descricao={`Nenhuma revisão, chamado ou encaminhamento com erro nos últimos ${dias} dias. Se parecer bom demais, abra uma conversa em Leads.`}
+          descricao={`Nenhuma revisão, chamado ou encaminhamento com erro ${descreverPeriodo(dias)}. Se parecer bom demais, abra uma conversa em Leads.`}
           className="py-8"
         />
       )}

@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils';
-import { DIAS_PERMITIDOS, type Dias } from './dados';
+import { PERIODOS, rotuloDoPeriodo, type Dias } from './dados';
 
 /**
- * 7 / 14 / 30 dias: controle segmentado em tinta (o ativo é tinta cheia, como o
- * botão padrão), 36px de altura no ponteiro fino e 40px no grosso.
+ * Hoje / Ontem / 7 / 14 / 30 dias: controle segmentado em tinta (o ativo é
+ * tinta cheia, como o botão padrão), 36px de altura no ponteiro fino e 40px no grosso.
  */
 export function SeletorDePeriodo({ dias, aoMudar }: { dias: Dias; aoMudar: (dias: Dias) => void }) {
   return (
@@ -12,7 +12,7 @@ export function SeletorDePeriodo({ dias, aoMudar }: { dias: Dias; aoMudar: (dias
       aria-label="Período"
       className="inline-flex h-9 items-center rounded-md border border-border bg-background p-0.5 [@media(pointer:coarse)]:h-10"
     >
-      {DIAS_PERMITIDOS.map((d) => {
+      {PERIODOS.map((d) => {
         const ativo = d === dias;
         return (
           <button
@@ -26,7 +26,7 @@ export function SeletorDePeriodo({ dias, aoMudar }: { dias: Dias; aoMudar: (dias
               ativo ? 'bg-action text-action-foreground' : 'text-croqui-soft hover:text-foreground',
             )}
           >
-            {d} dias
+            {rotuloDoPeriodo(d)}
           </button>
         );
       })}

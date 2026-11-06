@@ -18,9 +18,11 @@ function comparar(a: Metricas, b: Metricas, campo: Campo, inverso = false) {
 }
 
 /**
- * As dez medidas do período, cada uma com a variação contra o período anterior
- * e o caminho até a lista que a explica. Onde subir não é nem bom nem ruim
- * (silêncios, FUP90), a nota diz quanto era, sem cor.
+ * As dez medidas do período, cada uma com a variação contra o período de
+ * comparação (os N dias anteriores; com "hoje", ontem até esta hora; com
+ * "ontem", anteontem) e o caminho até a lista que a explica. A legenda embaixo
+ * diz com o que se compara. Onde subir não é nem bom nem ruim (silêncios,
+ * FUP90), a nota diz quanto era, sem cor.
  */
 export function Medidas({ dias, className }: { dias: Dias; className?: string }) {
   const q = useMetricas(dias);
@@ -121,6 +123,7 @@ export function Medidas({ dias, className }: { dias: Dias; className?: string })
         nota={`${numero(a.fup90_respondidos)} responderam (${pct(a.fup90_respondidos, a.fup90_envios)})`}
         onClick={ir(ROTAS.reguaFup90)}
       />
+      <p className="col-span-full text-2xs text-croqui-soft">Variação contra {q.data.comparacao}.</p>
     </div>
   );
 }

@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Pagina } from '@/gerenciador/componentes';
-import { periodoDosUltimos } from '@/gerenciador/lib/db';
 import { data } from '@/gerenciador/lib/formatos';
-import { lerDias, type Dias } from './dados';
+import { janelaDoPeriodo, lerDias, type Dias, type Janela } from './dados';
 import { SeletorDePeriodo } from './SeletorDePeriodo';
 import { PausaDaRegua } from './PausaDaRegua';
 import { Medidas } from './Medidas';
@@ -15,16 +14,24 @@ import { ReguaResumo } from './ReguaResumo';
 import { DependeDoDono } from './DependeDoDono';
 import { Atalhos } from './Atalhos';
 
+/** A linha sob o título: que período é e com o que se compara, em horário de Brasília. */
+function descricaoDoPeriodo(dias: Dias, janela: Janela): string {
+  const { periodo } = janela;
+  if (dias === 'hoje') return `Hoje (${data(periodo.de)}, da meia-noite até agora), comparado com ontem até esta hora. Horário de Brasília.`;
+  if (dias === 'ontem') return `Ontem (${data(periodo.de)}, o dia inteiro), comparado com anteontem. Horário de Brasília.`;
+  return `Últimos ${dias} dias (${data(periodo.de)} a ${data(periodo.ate)}), comparados com os ${dias} dias anteriores. Horário de Brasília.`;
+}
+
 /**
- * A primeira tela do gerenciador: como a Bruna está no período (7, 14 ou 30
- * dias, guardado em ?dias=) e o caminho até onde cada número se explica.
- * Cada bloco busca o que precisa e mostra o próprio carregando, vazio e erro,
- * para que uma RPC que falhe não apague as outras.
+ * A primeira tela do gerenciador: como a Bruna está no período (hoje, ontem,
+ * 7, 14 ou 30 dias, guardado em ?dias=) e o caminho até onde cada número se
+ * explica. Cada bloco busca o que precisa e mostra o próprio carregando, vazio
+ * e erro, para que uma RPC que falhe não apague as outras.
  */
 export default function VisaoGeral() {
   const [params, setParams] = useSearchParams();
   const dias = lerDias(params.get('dias'));
-  const periodo = useMemo(() => periodoDosUltimos(dias), [dias]);
+  const janela = useMemo(() => janelaDoPeriodo(dias), [dias]);
 
   const mudarDias = (d: Dias) => {
     setParams(
@@ -41,7 +48,7 @@ export default function VisaoGeral() {
     <Pagina
       rotulo="Gerenciador · Visão geral"
       titulo="Como a Bruna está"
-      descricao={`Últimos ${dias} dias (${data(periodo.de)} a ${data(periodo.ate)}), comparados com os ${dias} dias anteriores. Horário de Brasília.`}
+      descricao={descricaoDoPeriodo(dias, janela)}
       acoes={<SeletorDePeriodo dias={dias} aoMudar={mudarDias} />}
     >
       <div className="space-y-4 lg:space-y-5">

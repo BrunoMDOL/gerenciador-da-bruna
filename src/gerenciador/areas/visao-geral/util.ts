@@ -47,6 +47,13 @@ export function hojeEmSaoPaulo(agora: Date = new Date()): string {
   return `${p.year}-${p.month}-${p.day}`;
 }
 
+/** 'YYYY-MM-DD' mais `somar` dias no calendário ('2026-11-01', -1 -> '2026-10-31'): só calendário, sem fuso. */
+export function somarDias(dia: string, somar: number): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dia);
+  if (!m) throw new RangeError(`dia fora do formato AAAA-MM-DD: ${dia}`);
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + somar, 12)).toISOString().slice(0, 10);
+}
+
 const RELOGIO_SP = new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/Sao_Paulo', hourCycle: 'h23',
   year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',

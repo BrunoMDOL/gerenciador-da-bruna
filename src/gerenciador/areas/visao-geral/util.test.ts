@@ -1,11 +1,25 @@
 import { describe, it, expect } from 'vitest';
-import { hojeEmSaoPaulo, meiaNoiteEmSaoPaulo } from './util';
+import { hojeEmSaoPaulo, meiaNoiteEmSaoPaulo, somarDias } from './util';
 
 describe('hojeEmSaoPaulo', () => {
   it('dá o dia de São Paulo, não o de UTC', () => {
     expect(hojeEmSaoPaulo(new Date('2026-11-05T04:18:07.482Z'))).toBe('2026-11-05');
     // 23h30 de 04/11 em São Paulo já é 05/11 em UTC.
     expect(hojeEmSaoPaulo(new Date('2026-11-05T02:30:00.000Z'))).toBe('2026-11-04');
+  });
+});
+
+describe('somarDias', () => {
+  it('anda no calendário, atravessando mês e ano, sem passar por fuso', () => {
+    expect(somarDias('2026-11-05', -1)).toBe('2026-11-04');
+    expect(somarDias('2026-11-01', -1)).toBe('2026-10-31');
+    expect(somarDias('2026-12-31', 1)).toBe('2027-01-01');
+    expect(somarDias('2026-03-01', -1)).toBe('2026-02-28');
+    expect(somarDias('2026-11-05', 0)).toBe('2026-11-05');
+  });
+
+  it('recusa o que não é um dia AAAA-MM-DD', () => {
+    expect(() => somarDias('05/11/2026', 1)).toThrow(RangeError);
   });
 });
 

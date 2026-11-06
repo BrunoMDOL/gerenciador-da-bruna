@@ -1,9 +1,10 @@
 import { useId, useMemo } from 'react';
-import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, CartesianGrid, Cell, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { CalendarCheck } from 'lucide-react';
 import { Erro, Esqueleto, Painel, Vazio } from '@/gerenciador/componentes';
 import { numero } from '@/gerenciador/lib/formatos';
-import { useSerieDiaria, type Dias } from './dados';
+import { cn } from '@/lib/utils';
+import { diasDaSerie, janelaDoPeriodo, useSerieDiaria, type Dias } from './dados';
 import { diaCurto, diaPorExtenso, hojeEmSaoPaulo, n } from './util';
 
 interface Ponto {
@@ -42,15 +43,33 @@ function DicaDoDia({ active, payload }: DicaProps) {
   );
 }
 
+interface PontoDaLinha {
+  cx?: number;
+  cy?: number;
+  payload?: Ponto;
+  key?: string;
+}
+
+/** O ponto da linha só no dia em destaque, em caneta; nos outros dias, nada (a linha segue sem pontos). */
+function pontoEmDestaque(destaque: string | null) {
+  return function PontoDestacado({ cx, cy, payload, key }: PontoDaLinha) {
+    if (!destaque || payload?.dia !== destaque || cx == null || cy == null) return <g key={key} />;
+    return <circle key={key} cx={cx} cy={cy} r={3.5} fill={CANETA} stroke={CANETA} />;
+  };
+}
+
 /**
  * Atendidos e responderam em traço de tinta (cheio e tracejado) e os agendados
  * em barra hachurada de caneta, na mesma escala. A tabela dobrada embaixo é o
  * mesmo gráfico em texto, para leitor de tela e para quem quer o número exato.
+ * Com "hoje" ou "ontem" um dia só não é série (e a RPC conta por dia, não por
+ * hora): saem os últimos 7 dias com o dia escolhido em destaque, em caneta.
  */
 export function SerieDiaria({ dias, className }: { dias: Dias; className?: string }) {
   const q = useSerieDiaria(dias);
   const idHachura = `hachura-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const hoje = hojeEmSaoPaulo();
+  const destaque = janelaDoPeriodo(dias).dia;
 
   const pontos = useMemo<Ponto[]>(
     () => (q.data ?? []).map((d) => ({
@@ -73,11 +92,17 @@ export function SerieDiaria({ dias, className }: { dias: Dias; className?: strin
   );
   const primeiro = pontos[0];
   const ultimo = pontos[pontos.length - 1];
+  /** ' (hoje)' / ' (ontem)' ao lado do dia na tabela. */
+  const sufixo = (dia: string) => (dia === hoje ? ' (hoje)' : dias === 'ontem' && dia === destaque ? ' (ontem)' : '');
 
   return (
     <Painel
       titulo="Dia a dia"
-      nota={temHoje ? `${cheios} ${cheios === 1 ? 'dia cheio' : 'dias cheios'} e hoje, em andamento` : undefined}
+      nota={
+        destaque
+          ? `série dos últimos ${diasDaSerie(dias)} dias; o dia escolhido em destaque`
+          : temHoje ? `${cheios} ${cheios === 1 ? 'dia cheio' : 'dias cheios'} e hoje, em andamento` : undefined
+      }
       className={className}
     >
       {q.isPending && <Esqueleto linhas={5} className="h-[220px]" />}
@@ -90,7 +115,7 @@ export function SerieDiaria({ dias, className }: { dias: Dias; className?: strin
           <div
             className="h-[220px] w-full"
             role="img"
-            aria-label={`Gráfico de ${pontos.length} dias, de ${diaCurto(primeiro.dia)} a ${ultimo.dia === hoje ? 'hoje' : diaCurto(ultimo.dia)}: atendidos e responderam por dia em linha, agendados em barra, ${numero(totais.agendados)} no total. Os números de cada dia estão na tabela abaixo.`}
+            aria-label={`Gráfico de ${pontos.length} dias, de ${diaCurto(primeiro.dia)} a ${ultimo.dia === hoje ? 'hoje' : diaCurto(ultimo.dia)}: atendidos e responderam por dia em linha, agendados em barra, ${numero(totais.agendados)} no total.${destaque ? ` ${dias === 'hoje' ? 'Hoje' : 'Ontem'} (${diaCurto(destaque)}) em destaque.` : ''} Os números de cada dia estão na tabela abaixo.`}
           >
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={pontos} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
@@ -110,9 +135,14 @@ export function SerieDiaria({ dias, className }: { dias: Dias; className?: strin
                 />
                 <YAxis axisLine={false} tickLine={false} allowDecimals={false} width={40} tick={{ fill: SUAVE, fontSize: 11, fontFamily: FONTE_NUM }} />
                 <Tooltip content={<DicaDoDia />} cursor={{ stroke: REGUA, strokeWidth: 1 }} isAnimationActive={false} />
-                <Bar dataKey="agendados" name="Agendados" fill={`url(#${idHachura})`} stroke={CANETA} strokeWidth={1} maxBarSize={18} isAnimationActive={false} />
-                <Line type="monotone" dataKey="atendidos" name="Atendidos" stroke={TINTA} strokeWidth={1.5} dot={false} activeDot={{ r: 3, stroke: TINTA, fill: TINTA }} isAnimationActive={false} />
-                <Line type="monotone" dataKey="responderam" name="Responderam" stroke={SUAVE} strokeWidth={1.5} strokeDasharray="4 3" dot={false} activeDot={{ r: 3, stroke: SUAVE, fill: SUAVE }} isAnimationActive={false} />
+                <Bar dataKey="agendados" name="Agendados" fill={`url(#${idHachura})`} stroke={CANETA} strokeWidth={1} maxBarSize={18} isAnimationActive={false}>
+                  {pontos.map((p) => (
+                    // O dia em destaque sai em caneta cheia; os outros, hachurados.
+                    <Cell key={p.dia} fill={p.dia === destaque ? CANETA : `url(#${idHachura})`} />
+                  ))}
+                </Bar>
+                <Line type="monotone" dataKey="atendidos" name="Atendidos" stroke={TINTA} strokeWidth={1.5} dot={destaque ? pontoEmDestaque(destaque) : false} activeDot={{ r: 3, stroke: TINTA, fill: TINTA }} isAnimationActive={false} />
+                <Line type="monotone" dataKey="responderam" name="Responderam" stroke={SUAVE} strokeWidth={1.5} strokeDasharray="4 3" dot={destaque ? pontoEmDestaque(destaque) : false} activeDot={{ r: 3, stroke: SUAVE, fill: SUAVE }} isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -145,8 +175,8 @@ export function SerieDiaria({ dias, className }: { dias: Dias; className?: strin
               <tbody>
                 {pontos.map((p) => (
                   <tr key={p.dia} className="border-t border-border">
-                    <th scope="row" className="py-1.5 text-left font-croqui-num font-normal tabular-nums text-foreground">
-                      {diaCurto(p.dia)}{p.dia === hoje ? ' (hoje)' : ''}
+                    <th scope="row" className={cn('py-1.5 text-left font-croqui-num tabular-nums', p.dia === destaque ? 'font-semibold text-croqui-red-text' : 'font-normal text-foreground')}>
+                      {diaCurto(p.dia)}{sufixo(p.dia)}
                     </th>
                     <td className="py-1.5 text-right font-croqui-num tabular-nums">{numero(p.atendidos)}</td>
                     <td className="py-1.5 text-right font-croqui-num tabular-nums">{numero(p.responderam)}</td>
