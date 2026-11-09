@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Check, CheckCheck, CircleSlash, Loader2, Undo2, Wand2 } from 'lucide-react';
+import { AlertTriangle, Check, CheckCheck, CircleSlash, ClipboardCopy, Loader2, Undo2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +10,7 @@ import { dataHora } from '../lib/formatos';
 import { aplicarSugestao, decidirSugestao, descreverAcao, ehAcaoDeBairroFoco, lerAcao, marcarAplicadaAMao, AcaoInvalida, type Aplicador } from '../lib/acoes';
 import type { Sugestao } from '../lib/tipos';
 import { rota } from '@/gerenciador/lib/rotas';
+import { promptDaSugestao } from '../lib/promptDaSugestao';
 
 const TOM_DO_TIPO: Record<Sugestao['tipo'], string> = {
   nucleo: 'Núcleo', instrucao: 'Orientação', base: 'Base', regua: 'Régua', template: 'Template', config: 'Config', lead: 'Lead', outro: 'Outro',
@@ -72,6 +73,16 @@ export function CartaoDeSugestao({ sugestao: s, quem, aoMudar, mostrarOrigem, cl
   const rejeitar = () => rodar('rejeitar', async () => { await decidirSugestao(s, 'rejeitada', quem, motivo.trim() || undefined); setRejeitando(false); return 'Sugestão rejeitada.'; });
   const manual = () => rodar('manual', async () => { await marcarAplicadaAMao(s, quem); return 'Marcada como aplicada à mão.'; });
   const reabrir = () => rodar('reabrir', async () => { await decidirSugestao(s, 'pendente', quem); return 'Sugestão reaberta.'; });
+  // O prompt leva a sugestão inteira para uma sessão do Claude Code: útil
+  // sobretudo nas manuais, que pedem investigação no n8n, no banco ou no código.
+  const copiarPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(promptDaSugestao(s));
+      toast.success('Prompt copiado. Cole numa sessão do Claude Code para explicar e investigar esta sugestão.');
+    } catch {
+      toast.error('Não consegui copiar; o navegador bloqueou a área de transferência.');
+    }
+  };
 
   return (
     <article className={cn('rounded-md border border-border bg-card p-4', s.prioridade === 'alta' && s.status === 'pendente' && 'border-l-2 border-l-croqui-red', className)} aria-label={s.titulo}>
@@ -150,6 +161,9 @@ export function CartaoDeSugestao({ sugestao: s, quem, aoMudar, mostrarOrigem, cl
             <Undo2 className="h-3.5 w-3.5" strokeWidth={1.75} /> Reabrir
           </Button>
         )}
+        <Button size="sm" variant="ghost" onClick={copiarPrompt} title="Copia um texto com tudo desta sugestão para colar numa sessão do Claude Code, que explica e investiga">
+          <ClipboardCopy className="h-3.5 w-3.5" strokeWidth={1.75} /> Copiar prompt
+        </Button>
       </div>
       {rejeitando && (
         <div className="mt-2 space-y-2">
