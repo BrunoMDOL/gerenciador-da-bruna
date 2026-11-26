@@ -119,6 +119,25 @@ describe('detalhe do lead', () => {
     expect(screen.getByText('Aisten ou Leandro Faria')).toBeInTheDocument();
   });
 
+  it('copia o link do lead no Besser Talk, inteiro, e avisa', async () => {
+    const escrever = vi.fn(async (_: string) => {});
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: escrever }, configurable: true });
+    await abrirLead();
+    fireEvent.click(screen.getByRole('button', { name: /Copiar link/ }));
+    // O mesmo destino do "Abrir no Besser Talk".
+    await waitFor(() => expect(escrever).toHaveBeenCalledWith('https://bruna-chat-manager.lovable.app/?lead=26634'));
+    expect(screen.getByRole('link', { name: /Abrir no Besser Talk/ })).toHaveAttribute('href', escrever.mock.calls[0][0]);
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Link do lead copiado.'));
+  });
+
+  it('quando o navegador não deixa copiar, mostra o link no aviso', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn(async () => { throw new Error('NotAllowedError'); }) }, configurable: true });
+    await abrirLead();
+    fireEvent.click(screen.getByRole('button', { name: /Copiar link/ }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('O navegador não deixou copiar o link.', { description: 'https://bruna-chat-manager.lovable.app/?lead=26634' }));
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
   it('a linha do tempo abre na aba e lista os eventos do mais novo ao mais velho, em português', async () => {
     await abrirLead();
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Linha do tempo' }));

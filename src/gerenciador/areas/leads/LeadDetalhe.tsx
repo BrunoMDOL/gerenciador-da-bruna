@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, SearchX, Sparkles } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Link2, SearchX, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -103,6 +104,22 @@ function LeadCarregado({ estado, contatoId }: { estado: LeadEstado; contatoId: n
     </label>
   );
 
+  // O lead no painel de atendimento (Besser Talk): o mesmo link dos avisos aos
+  // representantes e das rotinas (/?lead=<id>). O botão "Abrir no Besser Talk"
+  // navega por ele; o "Copiar link" leva o endereço inteiro, para colar fora daqui.
+  const noPainel = `${BESSER_TALK_URL}/?lead=${contatoId}`;
+  const copiarLink = async () => {
+    const link = new URL(noPainel, window.location.origin).href;
+    try {
+      if (!navigator.clipboard) throw new Error('sem área de transferência');
+      await navigator.clipboard.writeText(link);
+      toast.success('Link do lead copiado.');
+    } catch {
+      // Sem a área de transferência, o link vai no aviso para ser copiado à mão.
+      toast.error('O navegador não deixou copiar o link.', { description: link });
+    }
+  };
+
   const conversa = <Conversa contatoId={contatoId} className="h-[calc(100vh-15rem)] min-h-[24rem] lg:h-[calc(100vh-13rem)]" />;
   const estadoDaBruna = <EstadoDaBruna estado={estado} acoes={acoes} nomeDoLead={nome} />;
   const linhaDoTempo = <Painel semRecheio><LinhaDoTempo contatoId={contatoId} /></Painel>;
@@ -134,9 +151,12 @@ function LeadCarregado({ estado, contatoId }: { estado: LeadEstado; contatoId: n
             <Link to={rota(`/copiloto?contato=${contatoId}`)}><Sparkles className="h-4 w-4" strokeWidth={1.75} aria-hidden /> Analisar com o Copiloto</Link>
           </Button>
           <Button variant="outline" asChild>
-            <a href={`${BESSER_TALK_URL}/?lead=${contatoId}`} target="_blank" rel="noopener noreferrer" title="Abre a conversa deste lead no Besser Talk, em outra aba">
+            <a href={noPainel} target="_blank" rel="noopener noreferrer" title="Abre a conversa deste lead no Besser Talk, em outra aba">
               <ExternalLink className="h-4 w-4" strokeWidth={1.75} aria-hidden /> Abrir no Besser Talk
             </a>
+          </Button>
+          <Button type="button" variant="outline" onClick={() => void copiarLink()} title="Copia o link que abre a conversa deste lead no Besser Talk">
+            <Link2 className="h-4 w-4" strokeWidth={1.75} aria-hidden /> Copiar link
           </Button>
         </>
       }
